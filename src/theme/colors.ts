@@ -38,6 +38,6 @@ export const colors = {
 };
 
 export const gradients = {
-  primary: ['#FB9E47', '#2A6EF5'], // bottom to top
+  primary: ['#2A6EF5', '#FB9E47'], // bottom to top
   button: ['#19BF2A', '#88FEC0'], // top to bottom
 };
