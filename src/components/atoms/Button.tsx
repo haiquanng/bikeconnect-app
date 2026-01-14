@@ -13,7 +13,7 @@ import { colors, gradients } from '../../theme/index';
 interface ButtonProps {
   title: string;
   onPress: () => void;
-  variant?: 'primary' | 'gradient' | 'outline' | 'ghost';
+  variant?: 'primary' | 'gradient' | 'outline' | 'ghost' | 'white';
   size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
   disabled?: boolean;
@@ -77,6 +77,7 @@ const Button: React.FC<ButtonProps> = ({
         variant === 'primary' && styles.primary,
         variant === 'outline' && styles.outline,
         variant === 'ghost' && styles.ghost,
+        variant === 'white' && styles.white,
       ]}
       onPress={onPress}
       disabled={disabled || loading}
@@ -93,6 +94,7 @@ const Button: React.FC<ButtonProps> = ({
             variant === 'primary' && { color: colors.white },
             variant === 'outline' && { color: colors.primary },
             variant === 'ghost' && { color: colors.primary },
+            variant === 'white' && { color: colors.primaryGreen },
           ]}
         >
           {title}
@@ -135,6 +137,9 @@ const styles = StyleSheet.create({
   ghost: {
     backgroundColor: 'transparent',
   },
+  white: {
+    backgroundColor: colors.white,
+  },
   disabled: {
     opacity: 0.5,
   },
@@ -145,10 +150,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   textMD: {
-    fontSize: 16,
+    fontSize: 18,
   },
   textLG: {
-    fontSize: 18,
+    fontSize: 22,
   },
 });
 

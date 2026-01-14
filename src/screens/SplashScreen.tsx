@@ -26,7 +26,7 @@ const SplashScreen = () => {
 
     // Navigate to main screen after 2 seconds
     const timer = setTimeout(() => {
-      navigation.navigate('Main' as never);
+      navigation.navigate('Onboarding' as never);
     }, 3000);
 
     return () => clearTimeout(timer);
