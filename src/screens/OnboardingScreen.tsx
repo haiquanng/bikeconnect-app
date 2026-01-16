@@ -133,7 +133,7 @@ const Footer = ({
           <View style={styles.startButtonContainer}>
             <Button
               title="Bắt đầu"
-              onPress={() => navigation.replace('Login')}
+              onPress={() => navigation.replace('Welcome')}
               fullWidth={false}
               style={styles.startButton}
               size="lg"
@@ -184,7 +184,7 @@ const OnboardingScreen = ({ navigation }: any) => {
   };
 
   const skip = () => {
-    navigation.replace('Login');
+    navigation.replace('Welcome');
   };
 
   return (
