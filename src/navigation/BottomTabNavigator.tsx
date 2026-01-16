@@ -6,11 +6,11 @@ import CustomTabBar from '../components/organisms/CustomTabBar';
 import TabIcon from '../components/atoms/TabIcon';
 
 // Screens
-import HomeScreen from '../screens/HomeScreen';
-import ShopScreen from '../screens/ShopScreen';
-import SellScreen from '../screens/SellScreen';
-import InboxScreen from '../screens/InboxScreen';
-import ProfileScreen from '../screens/ProfileScreen';
+import HomeScreen from '../screens/main/HomeScreen';
+import ShopScreen from '../screens/main/ShopScreen';
+import SellScreen from '../screens/main/SellScreen';
+import InboxScreen from '../screens/main/InboxScreen';
+import ProfileScreen from '../screens/profile/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
 

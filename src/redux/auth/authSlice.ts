@@ -1,11 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  avatar?: string;
-}
+import { User } from '../../types/user';
 
 interface AuthState {
   user: User | null;
@@ -46,13 +40,24 @@ const authSlice = createSlice({
       state.user = null;
       state.error = null;
     },
+    updateUser: (state, action: PayloadAction<Partial<User>>) => {
+      if (state.user) {
+        state.user = { ...state.user, ...action.payload };
+      }
+    },
     clearError: state => {
       state.error = null;
     },
   },
 });
 
-export const { loginStart, loginSuccess, loginFailure, logout, clearError } =
-  authSlice.actions;
+export const {
+  loginStart,
+  loginSuccess,
+  loginFailure,
+  logout,
+  updateUser,
+  clearError,
+} = authSlice.actions;
 
 export default authSlice.reducer;

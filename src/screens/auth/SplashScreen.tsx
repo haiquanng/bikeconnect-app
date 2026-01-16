@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Image, Animated } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { colors, gradients } from '../theme';
+import { colors, gradients } from '../../theme';
 import { useNavigation } from '@react-navigation/native';
 
 const SplashScreen = () => {
@@ -51,7 +51,7 @@ const SplashScreen = () => {
           ]}
         >
           <Image
-            source={require('../assets/images/logo.png')}
+            source={require('../../assets/images/logo.png')}
             style={styles.logo}
             resizeMode="contain"
           />

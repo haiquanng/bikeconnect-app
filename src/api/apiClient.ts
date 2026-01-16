@@ -30,8 +30,19 @@ class ApiClient {
 
     // Response interceptor
     this.client.interceptors.response.use(
-      response => response,
+      response => {
+        console.log('API Response:', response.config.url, response.status);
+        return response;
+      },
       error => {
+        // Log error details
+        console.error('API Error:', {
+          url: error.config?.url,
+          method: error.config?.method,
+          status: error.response?.status,
+          message: error.message,
+        });
+
         // Handle common errors
         if (error.response?.status === 401) {
           // Handle unauthorized - logout user

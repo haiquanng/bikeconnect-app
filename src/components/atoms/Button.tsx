@@ -110,6 +110,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
+    overflow: 'hidden',
   },
   sm: {
     paddingVertical: 8,
@@ -145,15 +146,20 @@ const styles = StyleSheet.create({
   },
   text: {
     fontWeight: '600',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   textSM: {
     fontSize: 14,
+    lineHeight: 20,
   },
   textMD: {
     fontSize: 18,
+    lineHeight: 24,
   },
   textLG: {
     fontSize: 22,
+    lineHeight: 28,
   },
 });
 

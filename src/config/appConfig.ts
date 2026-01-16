@@ -1,18 +1,20 @@
-// API Base URL - Update this with your backend URL
-export const API_BASE_URL = __DEV__
-  ? 'http://localhost:3000/api/v1'
-  : 'https://api.bikeconnect.com/api/v1';
+import Config from 'react-native-config';
+
+if (!Config.API_BASE_URL) {
+  throw new Error('API_BASE_URL is not defined in .env file');
+}
+export const API_BASE_URL = Config.API_BASE_URL;
 
 // Socket.IO URL
 export const SOCKET_URL = __DEV__
   ? 'http://localhost:3000'
   : 'https://api.bikeconnect.com';
 
-// Cloudinary Config (to be updated)
+// Cloudinary Config - add later
 export const CLOUDINARY_CLOUD_NAME = 'your-cloud-name';
 export const CLOUDINARY_UPLOAD_PRESET = 'your-upload-preset';
 
-// Firebase Config (to be updated)
+// Firebase Config - add later
 export const FIREBASE_CONFIG = {
   apiKey: 'your-api-key',
   authDomain: 'your-auth-domain',
@@ -22,7 +24,7 @@ export const FIREBASE_CONFIG = {
   appId: 'your-app-id',
 };
 
-// Google Sign-In Config (to be updated)
+// Google Sign-In Config - add later
 export const GOOGLE_WEB_CLIENT_ID = 'your-google-web-client-id';
 
 // App Config
