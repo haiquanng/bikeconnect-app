@@ -8,6 +8,7 @@ import SplashScreen from '../screens/auth/SplashScreen';
 import OnboardingScreen from '../screens/auth/OnboardingScreen';
 import WelcomeScreen from '../screens/auth/WelcomeScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
+import RegisterScreen from '../screens/auth/RegisterScreen';
 import ForgotPasswordEmailScreen from '../screens/auth/ForgotPasswordEmailScreen';
 import ForgotPasswordOTPScreen from '../screens/auth/ForgotPasswordOTPScreen';
 import ForgotPasswordNewPasswordScreen from '../screens/auth/ForgotPasswordNewPasswordScreen';
@@ -28,6 +29,7 @@ const AppNavigator = () => {
           <Stack.Screen name="Onboarding" component={OnboardingScreen} />
           <Stack.Screen name="Welcome" component={WelcomeScreen} />
           <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="Register" component={RegisterScreen} />
           <Stack.Screen
             name="ForgotPasswordEmail"
             component={ForgotPasswordEmailScreen}

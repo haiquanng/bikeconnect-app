@@ -17,7 +17,7 @@ const WelcomeScreen = ({ navigation }: any) => {
   };
 
   const handleRegister = () => {
-    Alert.alert('Thông báo', 'Tính năng đang phát triển');
+    navigation.navigate('Register');
   };
 
   const handleGoogleLogin = () => {
