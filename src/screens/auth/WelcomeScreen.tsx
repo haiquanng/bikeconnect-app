@@ -8,8 +8,8 @@ import {
   SafeAreaView,
   Alert,
 } from 'react-native';
-import { colors } from '../theme';
-import { Button } from '../components/atoms';
+import { colors } from '../../theme';
+import { Button } from '../../components/atoms';
 
 const WelcomeScreen = ({ navigation }: any) => {
   const handleLogin = () => {
@@ -33,7 +33,7 @@ const WelcomeScreen = ({ navigation }: any) => {
         {/* Logo */}
         <View style={styles.logoContainer}>
           <Image
-            source={require('../assets/images/logo.png')}
+            source={require('../../assets/images/logo.png')}
             style={styles.logo}
             resizeMode="contain"
           />
@@ -79,7 +79,7 @@ const WelcomeScreen = ({ navigation }: any) => {
             onPress={handleGoogleLogin}
           >
             <Image
-              source={require('../assets/icons/icon_google.png')}
+              source={require('../../assets/icons/icon_google.png')}
               style={styles.googleIcon}
               resizeMode="contain"
             />

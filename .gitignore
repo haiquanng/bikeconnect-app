@@ -79,3 +79,7 @@ GoogleService-Info.plist
 
 # Cloudinary
 cloudinary.config.js
+
+.agent/*
+.shared/*
+

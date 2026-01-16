@@ -9,8 +9,8 @@ import {
   StatusBar,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { colors, gradients } from '../theme';
-import { Button } from '../components/atoms';
+import { colors, gradients } from '../../theme';
+import { Button } from '../../components/atoms';
 
 const { width, height } = Dimensions.get('window');
 
@@ -19,7 +19,7 @@ const slides = [
     id: '1',
     title: 'Chọn xe yêu thích',
     description: 'Tự do chọn xe mà bạn thích,\nhoặc đăng bán một cách dễ dàng',
-    image: require('../assets/images/onboarding2.png'),
+    image: require('../../assets/images/onboarding2.png'),
     isWelcome: false,
     subtitle: '',
   },
@@ -27,7 +27,7 @@ const slides = [
     id: '2',
     title: 'Mua dễ dàng',
     description: 'Thao tác dễ dàng, nhận hàng\nliền tay',
-    image: require('../assets/images/onboarding3.png'),
+    image: require('../../assets/images/onboarding3.png'),
     isWelcome: false,
     subtitle: '',
   },
@@ -35,7 +35,7 @@ const slides = [
     id: '3',
     title: 'Nhận hàng',
     description: 'Tận hưởng thời gian của bạn\nvới sản phẩm mà bạn tin\nmua',
-    image: require('../assets/images/onboarding4.png'),
+    image: require('../../assets/images/onboarding4.png'),
     isWelcome: false,
     subtitle: '',
   },
@@ -44,8 +44,8 @@ const slides = [
     title: 'BikeConnect',
     subtitle: '',
     description: '',
-    image: require('../assets/images/logo.png'),
-    topImage: require('../assets/images/onboarding5_top.png'),
+    image: require('../../assets/images/logo.png'),
+    topImage: require('../../assets/images/onboarding5_top.png'),
     isWelcome: true,
   },
 ];

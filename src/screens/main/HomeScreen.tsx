@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { useAppSelector } from '../redux/hooks';
-import { colors } from '../theme';
+import { useAppSelector } from '../../redux/hooks';
+import { colors } from '../../theme';
 import Icon from 'react-native-vector-icons/Ionicons';
 
 const HomeScreen = () => {
