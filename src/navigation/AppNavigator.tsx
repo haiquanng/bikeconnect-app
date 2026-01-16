@@ -13,6 +13,13 @@ import ForgotPasswordEmailScreen from '../screens/auth/ForgotPasswordEmailScreen
 import ForgotPasswordOTPScreen from '../screens/auth/ForgotPasswordOTPScreen';
 import ForgotPasswordNewPasswordScreen from '../screens/auth/ForgotPasswordNewPasswordScreen';
 import ForgotPasswordSuccessScreen from '../screens/auth/ForgotPasswordSuccessScreen';
+import ProfileEditScreen from '../screens/profile/ProfileEditScreen';
+import ChangePasswordScreen from '../screens/profile/ChangePasswordScreen';
+import OrdersScreen from '../screens/profile/OrdersScreen';
+import ListingsScreen from '../screens/profile/ListingsScreen';
+import SalesScreen from '../screens/profile/SalesScreen';
+import NotificationsScreen from '../screens/profile/NotificationsScreen';
+import HelpScreen from '../screens/profile/HelpScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -47,6 +54,16 @@ const AppNavigator = () => {
             component={ForgotPasswordSuccessScreen}
           />
           <Stack.Screen name="Main" component={BottomTabNavigator} />
+          <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
+          <Stack.Screen
+            name="ChangePassword"
+            component={ChangePasswordScreen}
+          />
+          <Stack.Screen name="Orders" component={OrdersScreen} />
+          <Stack.Screen name="Listings" component={ListingsScreen} />
+          <Stack.Screen name="Sales" component={SalesScreen} />
+          <Stack.Screen name="Notifications" component={NotificationsScreen} />
+          <Stack.Screen name="Help" component={HelpScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </Provider>
