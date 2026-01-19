@@ -5,10 +5,10 @@ import {
   StyleSheet,
   TouchableOpacity,
   Image,
-  SafeAreaView,
   ScrollView,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { colors } from '../../theme';
 import { useAppSelector, useAppDispatch } from '../../redux/hooks';
@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.backgroundSecondary,
   },
   scrollContent: {
-    paddingBottom: 20,
+    paddingBottom: 100, // Increased to prevent last item from being cut off
   },
   header: {
     paddingHorizontal: 24,
