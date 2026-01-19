@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TextInput,
   TouchableOpacity,
   Image,
   FlatList,
@@ -22,10 +21,10 @@ const CARD_WIDTH = (width - 48) / 2;
 
 const HomeScreen = ({ navigation }: any) => {
   const user = useAppSelector(state => state.auth.user);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [_searchQuery, _setSearchQuery] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
-  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [_featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [_loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
 
   // Bike categories
@@ -122,16 +121,13 @@ const HomeScreen = ({ navigation }: any) => {
 
   const renderSearchBar = () => (
     <View style={styles.searchContainer}>
-      <View style={styles.searchBar}>
+      <TouchableOpacity
+        style={styles.searchBar}
+        onPress={() => navigation.navigate('Search')}
+      >
         <Icon name="search-outline" size={20} color={colors.gray[400]} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Tìm kiếm xe đạp..."
-          placeholderTextColor={colors.gray[400]}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-      </View>
+        <Text style={styles.searchPlaceholder}>Tìm kiếm xe đạp...</Text>
+      </TouchableOpacity>
     </View>
   );
 
@@ -347,11 +343,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     height: 48,
   },
-  searchInput: {
+  searchPlaceholder: {
     flex: 1,
     marginLeft: 8,
     fontSize: 16,
-    color: colors.textPrimary,
+    color: colors.gray[400],
   },
   filterButton: {
     width: 48,

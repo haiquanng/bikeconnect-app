@@ -20,6 +20,7 @@ import ListingsScreen from '../screens/profile/ListingsScreen';
 import SalesScreen from '../screens/profile/SalesScreen';
 import NotificationsScreen from '../screens/profile/NotificationsScreen';
 import HelpScreen from '../screens/profile/HelpScreen';
+import SearchScreen from '../screens/main/SearchScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -54,6 +55,7 @@ const AppNavigator = () => {
             component={ForgotPasswordSuccessScreen}
           />
           <Stack.Screen name="Main" component={BottomTabNavigator} />
+          <Stack.Screen name="Search" component={SearchScreen} />
           <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
           <Stack.Screen
             name="ChangePassword"

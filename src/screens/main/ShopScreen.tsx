@@ -1,5 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, FlatList } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { colors } from '../../theme';
@@ -12,8 +19,9 @@ import ViewToggle from '../../components/molecules/ViewToggle';
 
 type ViewMode = 'grid' | 'list';
 
-const ShopScreen = ({ navigation: _navigation }: any) => {
-  const [searchQuery, setSearchQuery] = useState('');
+const ShopScreen = ({ navigation, route }: any) => {
+  const searchQueryParam = route?.params?.searchQuery || '';
+  const [_searchQuery, _setSearchQuery] = useState(searchQueryParam);
   const [products, setProducts] = useState<Product[]>([]);
   const [_loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
@@ -27,9 +35,11 @@ const ShopScreen = ({ navigation: _navigation }: any) => {
     { id: 'brand', label: 'Thương hiệu', icon: 'business-outline' },
   ];
 
-  useEffect(() => {
-    loadProducts();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadProducts();
+    }, []),
+  );
 
   const loadProducts = async () => {
     try {
@@ -60,16 +70,13 @@ const ShopScreen = ({ navigation: _navigation }: any) => {
     <>
       {/* Search Bar */}
       <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
+        <TouchableOpacity
+          style={styles.searchBar}
+          onPress={() => navigation.navigate('Search')}
+        >
           <Icon name="search-outline" size={20} color={colors.gray[400]} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Tìm kiếm"
-            placeholderTextColor={colors.gray[400]}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
+          <Text style={styles.searchPlaceholder}>Tìm kiếm</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Filter Chips */}
@@ -150,11 +157,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     height: 48,
   },
-  searchInput: {
+  searchPlaceholder: {
     flex: 1,
     marginLeft: 8,
     fontSize: 16,
-    color: colors.textPrimary,
+    color: colors.gray[400],
   },
   filtersContainer: {
     paddingVertical: 12,
