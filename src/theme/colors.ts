@@ -3,6 +3,8 @@ export const colors = {
   // Primary Colors
   primary: '#00FF78',
   primaryGreen: '#4CCD59',
+  primaryBlue: '#3B82F6', // Friendly blue for buttons
+  darkNavy: '#1F2937', // Dark for active tabs
 
   gradientOrange: '#FB9E47',
   gradientBlue: '#2A6EF5',
