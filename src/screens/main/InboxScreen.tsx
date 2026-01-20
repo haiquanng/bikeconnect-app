@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,16 +6,50 @@ import {
   TouchableOpacity,
   Image,
   ScrollView,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { colors } from '../../theme';
+import { Conversation } from '../../types/conversation';
+import {
+  mockSellingConversations,
+  mockBuyingConversations,
+} from '../../data/mockConversations';
+import ConversationItem from '../../components/molecules/ConversationItem';
 
 type TabType = 'all' | 'buying' | 'selling' | 'unread';
 
 const InboxScreen = ({ navigation }: any) => {
   const [selectedTab, setSelectedTab] = useState<TabType>('all');
-  const [conversations] = useState([]); // Empty for now, will add mock data later
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+
+  const loadConversations = useCallback(() => {
+    let data: Conversation[] = [];
+
+    switch (selectedTab) {
+      case 'all':
+        data = [...mockSellingConversations, ...mockBuyingConversations];
+        break;
+      case 'buying':
+        data = mockBuyingConversations;
+        break;
+      case 'selling':
+        data = mockSellingConversations;
+        break;
+      case 'unread':
+        data = [...mockSellingConversations, ...mockBuyingConversations].filter(
+          conv => conv.unreadCount > 0,
+        );
+        break;
+    }
+
+    setConversations(data);
+  }, [selectedTab]);
+
+  useEffect(() => {
+    loadConversations();
+  }, [selectedTab, loadConversations]);
 
   const tabs = [
     { id: 'all', label: 'Tất cả' },
@@ -66,7 +100,7 @@ const InboxScreen = ({ navigation }: any) => {
         title = 'Tìm sản phẩm bạn thích';
         subtitle =
           'và liên hệ với người bán để đặt câu hỏi hoặc đưa ra đề nghị';
-        buttonText = 'Duyệt cửa hàng';
+        buttonText = 'Tới cửa hàng';
         break;
       case 'selling':
         title = 'Đăng sản phẩm bạn muốn bán';
@@ -151,12 +185,28 @@ const InboxScreen = ({ navigation }: any) => {
       {renderTabs()}
 
       {/* Content */}
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={styles.contentContainer}
-      >
-        {conversations.length === 0 ? renderEmptyState() : null}
-      </ScrollView>
+      {conversations.length === 0 ? (
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.contentContainer}
+        >
+          {renderEmptyState()}
+        </ScrollView>
+      ) : (
+        <FlatList
+          data={conversations}
+          keyExtractor={item => item.id}
+          renderItem={({ item }) => (
+            <ConversationItem
+              conversation={item}
+              onPress={() => {
+                navigation.navigate('ChatDetail', { conversation: item });
+              }}
+            />
+          )}
+          contentContainerStyle={styles.listContent}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -222,6 +272,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
+    flexGrow: 1,
+  },
+  listContent: {
     flexGrow: 1,
   },
   emptyContainer: {

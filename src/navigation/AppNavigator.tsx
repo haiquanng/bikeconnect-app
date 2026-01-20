@@ -21,6 +21,7 @@ import SalesScreen from '../screens/profile/SalesScreen';
 import NotificationsScreen from '../screens/profile/NotificationsScreen';
 import HelpScreen from '../screens/profile/HelpScreen';
 import SearchScreen from '../screens/main/SearchScreen';
+import ChatDetailScreen from '../screens/main/ChatDetailScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -66,6 +67,7 @@ const AppNavigator = () => {
           <Stack.Screen name="Sales" component={SalesScreen} />
           <Stack.Screen name="Notifications" component={NotificationsScreen} />
           <Stack.Screen name="Help" component={HelpScreen} />
+          <Stack.Screen name="ChatDetail" component={ChatDetailScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </Provider>
