@@ -1,32 +1,63 @@
+export type UserRole = 'BUYER' | 'SELLER' | 'ADMIN' | 'INSPECTOR';
+
+export type AuthProvider = 'google' | 'email';
 export interface Address {
-  street: string;
-  city: string;
-  isMain: boolean;
+  street?: string;
+  city?: string;
+  districts?: string;
+  ward?: string;
 }
 
 export interface User {
   id: string;
+  firebaseUId?: string;
   email: string;
-  password?: string;
-  avatar: string;
-  role: string[]; // Array of roles: BUYER, SELLER, etc.
-  fullName: string;
-  phone: string;
-  address: Address[];
-  dob: string;
-  emailNotification: boolean;
-  pushNotification: boolean;
-  gender: number; // 0: male, 1: female, 2: other
+  fullName?: string;
+  phone?: string;
+  address?: Address;
+  avatarUrl?: string;
+  roles: UserRole[];
+  reputationScore: number;
   isVerified: boolean;
-  status: string; // ACTIVE, INACTIVE, ...
+  isActive: boolean;
+  authProvider: AuthProvider;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
+// Login request
 export interface LoginRequest {
   email: string;
   password: string;
 }
 
-export interface LoginResponse {
-  user: User;
-  token?: string; // For future JWT implementation
+// Register request
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  fullName?: string;
+}
+
+// Auth response from backend
+export interface AuthResponse {
+  success: boolean;
+  message: string;
+  data: {
+    id: string;
+    email: string;
+    fullName?: string;
+    avatarUrl?: string;
+    roles: UserRole[];
+    isVerified: boolean;
+    authProvider: AuthProvider;
+    idToken: string;
+    refreshToken: string;
+    expiresIn: string;
+  };
+}
+
+// Profile response
+export interface ProfileResponse {
+  success: boolean;
+  data: User;
 }

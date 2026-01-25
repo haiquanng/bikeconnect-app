@@ -10,19 +10,25 @@ export const SOCKET_URL = __DEV__
   ? 'http://localhost:3000'
   : 'https://api.bikeconnect.com';
 
-// Cloudinary Config - add later
-export const CLOUDINARY_CLOUD_NAME = 'your-cloud-name';
-export const CLOUDINARY_UPLOAD_PRESET = 'your-upload-preset';
+// Cloudinary Config
+export const CLOUDINARY_CLOUD_NAME = Config.CLOUDINARY_CLOUD_NAME || '';
+export const CLOUDINARY_UPLOAD_PRESET = Config.CLOUDINARY_UPLOAD_PRESET || '';
 
-// Firebase Config - add later
+// Firebase Config
 export const FIREBASE_CONFIG = {
-  apiKey: 'your-api-key',
-  authDomain: 'your-auth-domain',
-  projectId: 'your-project-id',
-  storageBucket: 'your-storage-bucket',
-  messagingSenderId: 'your-messaging-sender-id',
-  appId: 'your-app-id',
+  apiKey: Config.FIREBASE_API_KEY || '',
+  authDomain: Config.FIREBASE_AUTH_DOMAIN || '',
+  projectId: Config.FIREBASE_PROJECT_ID || '',
+  storageBucket: Config.FIREBASE_STORAGE_BUCKET || '',
+  messagingSenderId: Config.FIREBASE_MESSAGING_SENDER_ID || '',
+  appId: Config.FIREBASE_APP_ID || '',
 };
+
+// Firebase REST API URL for email/password auth
+export const FIREBASE_AUTH_URL =
+  'https://identitytoolkit.googleapis.com/v1/accounts';
+export const FIREBASE_REFRESH_TOKEN_URL =
+  'https://securetoken.googleapis.com/v1/token';
 
 // Google Sign-In Config - add later
 export const GOOGLE_WEB_CLIENT_ID = 'your-google-web-client-id';

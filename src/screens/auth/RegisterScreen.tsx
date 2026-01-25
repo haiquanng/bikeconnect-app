@@ -10,9 +10,9 @@ import {
   Platform,
   ScrollView,
   Alert,
-  SafeAreaView,
   Keyboard,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { colors } from '../../theme';
 import { Button } from '../../components/atoms';
@@ -67,8 +67,8 @@ const RegisterScreen = ({ navigation }: any) => {
       return;
     }
 
-    if (password.length < 8) {
-      Alert.alert('Lỗi', 'Mật khẩu phải có ít nhất 8 ký tự');
+    if (password.length < 6) {
+      Alert.alert('Lỗi', 'Mật khẩu phải có ít nhất 6 ký tự');
       return;
     }
 
@@ -80,24 +80,12 @@ const RegisterScreen = ({ navigation }: any) => {
     setLoading(true);
 
     try {
-      const userData = {
-        fullName,
+      // Call real API with proper format
+      await authService.register({
         email,
-        phone: phone || '',
         password,
-        avatar:
-          'https://ui-avatars.com/api/?name=' + encodeURIComponent(fullName),
-        role: ['BUYER'],
-        address: [],
-        dob: '',
-        emailNotification: true,
-        pushNotification: true,
-        gender: 0,
-        isVerified: false,
-        status: 'ACTIVE',
-      };
-
-      await authService.register(userData);
+        fullName,
+      });
 
       // Dismiss keyboard and stop loading
       setLoading(false);
