@@ -1,14 +1,14 @@
 import { apiClient } from './apiClient';
-import { API_BASE_URL } from '../config/appConfig';
+// import { API_BASE_URL } from '../config/appConfig';
 import { Product } from '../types/product';
+
+const apiUrl = 'https://690dec0bbd0fefc30a02db68.mockapi.io';
 
 export const productService = {
   // Get all products
   async getProducts(): Promise<Product[]> {
     try {
-      const products = await apiClient.get<Product[]>(
-        `${API_BASE_URL}/products`,
-      );
+      const products = await apiClient.get<Product[]>(`${apiUrl}/products`);
       return products;
     } catch (error) {
       console.error('Get products error:', error);
@@ -19,9 +19,7 @@ export const productService = {
   // Get product by ID
   async getProductById(id: string): Promise<Product> {
     try {
-      const product = await apiClient.get<Product>(
-        `${API_BASE_URL}/products/${id}`,
-      );
+      const product = await apiClient.get<Product>(`${apiUrl}/products/${id}`);
       return product;
     } catch (error) {
       console.error('Get product error:', error);
