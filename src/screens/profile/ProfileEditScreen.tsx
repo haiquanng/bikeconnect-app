@@ -8,16 +8,18 @@ import {
   ScrollView,
   Alert,
   Keyboard,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { launchImageLibrary } from 'react-native-image-picker';
 import { colors } from '../../theme';
 import { Button } from '../../components/atoms';
 import { useAppSelector, useAppDispatch } from '../../redux/hooks';
-import { loginSuccess } from '../../redux/auth/authSlice';
-import { apiClient } from '../../api/apiClient';
-import { API_BASE_URL } from '../../config/appConfig';
-import { User } from '../../types/user';
+import { updateUser } from '../../redux/auth/authSlice';
+import { authService } from '../../api/authService';
+import { uploadImageToCloudinary } from '../../api/uploadService';
 
 const ProfileEditScreen = ({ navigation }: any) => {
   const dispatch = useAppDispatch();
@@ -26,19 +28,52 @@ const ProfileEditScreen = ({ navigation }: any) => {
   const [fullName, setFullName] = useState(user?.fullName || '');
   const [email, _setEmail] = useState(user?.email || '');
   const [phone, setPhone] = useState(user?.phone || '');
-  const [dob, setDob] = useState(user?.dob || '');
-  const [gender, setGender] = useState(user?.gender || 0);
+  const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || '');
   const [loading, setLoading] = useState(false);
-
-  const genderOptions = [
-    { label: 'Nam', value: 0 },
-    { label: 'Nữ', value: 1 },
-    { label: 'Khác', value: 2 },
-  ];
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const validatePhone = (phoneInput: string): boolean => {
     const phoneRegex = /^[0-9]{10,11}$/;
     return phoneRegex.test(phoneInput);
+  };
+
+  const handlePickImage = async () => {
+    try {
+      const result = await launchImageLibrary({
+        mediaType: 'photo',
+        quality: 0.8,
+        maxWidth: 1000,
+        maxHeight: 1000,
+      });
+
+      if (result.didCancel) {
+        return;
+      }
+
+      if (result.errorCode) {
+        Alert.alert('Lỗi', 'Không thể chọn ảnh');
+        return;
+      }
+
+      const asset = result.assets?.[0];
+      if (!asset?.uri) {
+        return;
+      }
+
+      setUploadingAvatar(true);
+      try {
+        const uploadResult = await uploadImageToCloudinary(asset.uri);
+        setAvatarUrl(uploadResult.url);
+        Alert.alert('Thành công', 'Tải ảnh lên thành công');
+      } catch (error: any) {
+        Alert.alert('Lỗi', error.message || 'Không thể tải ảnh lên');
+      } finally {
+        setUploadingAvatar(false);
+      }
+    } catch (error) {
+      console.error('Pick image error:', error);
+      Alert.alert('Lỗi', 'Đã xảy ra lỗi khi chọn ảnh');
+    }
   };
 
   const handleUpdate = async () => {
@@ -57,21 +92,12 @@ const ProfileEditScreen = ({ navigation }: any) => {
     Keyboard.dismiss();
 
     try {
-      // Update user via MockAPI
-      const updatedUser = await apiClient.put<User>(
-        `${API_BASE_URL}/users/${user?.id}`,
-        {
-          ...user,
-          fullName,
-          email,
-          phone,
-          dob,
-          gender,
-        },
-      );
-
-      // Update Redux state
-      dispatch(loginSuccess(updatedUser));
+      const updatedUser = await authService.updateProfile({
+        fullName,
+        phone,
+        avatarUrl: avatarUrl || undefined,
+      });
+      dispatch(updateUser(updatedUser));
 
       // Show success and navigate back
       setTimeout(() => {
@@ -111,6 +137,33 @@ const ProfileEditScreen = ({ navigation }: any) => {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
+        <View style={styles.avatarSection}>
+          <View style={styles.avatarContainer}>
+            <Image
+              source={{
+                uri:
+                  avatarUrl ||
+                  'https://api.dicebear.com/9.x/adventurer/svg?seed=Easton',
+              }}
+              style={styles.avatar}
+            />
+            <TouchableOpacity
+              style={styles.changeAvatarButton}
+              onPress={handlePickImage}
+              disabled={uploadingAvatar}
+            >
+              {uploadingAvatar ? (
+                <ActivityIndicator size="small" color={colors.white} />
+              ) : (
+                <>
+                  <Icon name="camera" size={20} color={colors.white} />
+                  <Text style={styles.changeAvatarText}>Đổi ảnh</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Full Name */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Họ và tên</Text>
@@ -155,47 +208,6 @@ const ProfileEditScreen = ({ navigation }: any) => {
               keyboardType="phone-pad"
             />
             <Icon name="call-outline" size={20} color={colors.gray[400]} />
-          </View>
-        </View>
-
-        {/* Date of Birth */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Ngày sinh</Text>
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="DD/MM/YYYY"
-              placeholderTextColor={colors.gray[300]}
-              value={dob}
-              onChangeText={setDob}
-            />
-            <Icon name="calendar-outline" size={20} color={colors.gray[400]} />
-          </View>
-        </View>
-
-        {/* Gender */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Giới tính</Text>
-          <View style={styles.genderContainer}>
-            {genderOptions.map(option => (
-              <TouchableOpacity
-                key={option.value}
-                style={[
-                  styles.genderOption,
-                  gender === option.value && styles.genderOptionActive,
-                ]}
-                onPress={() => setGender(option.value)}
-              >
-                <Text
-                  style={[
-                    styles.genderOptionText,
-                    gender === option.value && styles.genderOptionTextActive,
-                  ]}
-                >
-                  {option.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
           </View>
         </View>
       </ScrollView>
@@ -244,6 +256,37 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingBottom: 100, // Extra padding for bottom button
   },
+  avatarSection: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  avatarContainer: {
+    position: 'relative',
+    marginTop: 12,
+  },
+  avatar: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: colors.gray[200],
+  },
+  changeAvatarButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    backgroundColor: colors.primary,
+    borderRadius: 20,
+    minWidth: 120,
+  },
+  changeAvatarText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '600',
+  },
   inputGroup: {
     marginBottom: 24,
   },
@@ -275,32 +318,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
     marginTop: 4,
-  },
-  genderContainer: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  genderOption: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.gray[200],
-    backgroundColor: colors.white,
-    alignItems: 'center',
-  },
-  genderOptionActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary + '10',
-  },
-  genderOptionText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.textSecondary,
-  },
-  genderOptionTextActive: {
-    color: colors.primary,
   },
   bottomContainer: {
     position: 'absolute',

@@ -125,7 +125,9 @@ const ProfileScreen = ({ navigation }: any) => {
           <View style={styles.avatarContainer}>
             <Image
               source={{
-                uri: user?.avatar || 'https://ui-avatars.com/api/?name=User',
+                uri:
+                  user?.avatarUrl ||
+                  'https://api.dicebear.com/9.x/adventurer/svg?seed=Easton',
               }}
               style={styles.avatar}
             />
