@@ -10,10 +10,10 @@ import {
   Platform,
   ScrollView,
   Alert,
-  SafeAreaView,
   Keyboard,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../theme';
 import { Button } from '../../components/atoms';
 import { SuccessModal } from '../../components/ui';
@@ -49,10 +49,31 @@ const LoginScreen = ({ navigation }: any) => {
     dispatch(loginStart());
 
     try {
-      const user = await authService.login({ email, password });
+      // Call API
+      const response = await authService.login({ email, password });
 
-      // Store user data in Redux
-      dispatch(loginSuccess(user));
+      // Transform response data to User format
+      const user = {
+        id: response.data.id,
+        email: response.data.email,
+        fullName: response.data.fullName,
+        avatarUrl: response.data.avatarUrl,
+        roles: response.data.roles,
+        isVerified: response.data.isVerified,
+        authProvider: response.data.authProvider,
+        reputationScore: 0,
+        isActive: true,
+      };
+
+      // Store user data and tokens in Redux
+      dispatch(
+        loginSuccess({
+          user,
+          idToken: response.data.idToken,
+          refreshToken: response.data.refreshToken,
+          expiresIn: response.data.expiresIn,
+        }),
+      );
 
       // Dismiss keyboard and stop loading
       setLoading(false);
