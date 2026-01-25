@@ -13,8 +13,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useAppSelector } from '../../redux/hooks';
 import { colors } from '../../theme';
-import { Product, BikeCategory } from '../../types/product';
+import { Product } from '../../types/product';
+import { Category } from '../../types/category';
 import { productService } from '../../api/productService';
+import { categoryService } from '../../api/categoryService';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48) / 2;
@@ -24,59 +26,27 @@ const HomeScreen = ({ navigation }: any) => {
   const [_searchQuery, _setSearchQuery] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const [_featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [_loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
 
-  // Bike categories
-  const categories: BikeCategory[] = [
-    { id: 'all', name: 'Tất cả', icon: 'apps-outline', color: colors.primary },
-    {
-      id: 'mountain',
-      name: 'Leo núi',
-      icon: 'trail-sign-outline',
-      color: '#8B4513',
-    },
-    {
-      id: 'road',
-      name: 'Đường trường',
-      icon: 'speedometer-outline',
-      color: '#FF6B6B',
-    },
-    {
-      id: 'electric',
-      name: 'Xe điện',
-      icon: 'flash-outline',
-      color: '#4ECDC4',
-    },
-    {
-      id: 'city',
-      name: 'Địa hình',
-      icon: 'business-outline',
-      color: '#95E1D3',
-    },
-    {
-      id: 'kids',
-      name: 'Trẻ em',
-      icon: 'happy-outline',
-      color: '#FFB6C1',
-    },
-  ];
-
   useEffect(() => {
-    loadProducts();
+    loadData();
   }, []);
 
-  const loadProducts = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const [allProducts, featured] = await Promise.all([
+      const [allProducts, featured, categoriesData] = await Promise.all([
         productService.getProducts(),
         productService.getFeaturedProducts(),
+        categoryService.getActiveCategories(),
       ]);
       setProducts(allProducts);
       setFeaturedProducts(featured);
+      setCategories(categoriesData);
     } catch (error) {
-      console.error('Load products error:', error);
+      console.error('Load data error:', error);
     } finally {
       setLoading(false);
     }
@@ -94,7 +64,9 @@ const HomeScreen = ({ navigation }: any) => {
       <View style={styles.headerLeft}>
         <Image
           source={{
-            uri: user?.avatar || 'https://ui-avatars.com/api/?name=User',
+            uri:
+              user?.avatarUrl ||
+              'https://api.dicebear.com/9.x/adventurer/svg?seed=Easton',
           }}
           style={styles.avatar}
         />
@@ -172,24 +144,58 @@ const HomeScreen = ({ navigation }: any) => {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.categoriesContainer}
       >
+        {/* All categories option */}
+        <TouchableOpacity
+          style={[
+            styles.categoryCard,
+            selectedCategory === 'all' && styles.categoryCardActive,
+          ]}
+          onPress={() => setSelectedCategory('all')}
+        >
+          <View
+            style={[
+              styles.categoryIcon,
+              { backgroundColor: colors.primary + '20' },
+            ]}
+          >
+            <Icon name="apps-outline" size={24} color={colors.primary} />
+          </View>
+          <Text style={styles.categoryName}>Tất cả</Text>
+        </TouchableOpacity>
+
+        {/* Categories from API */}
         {categories.map(category => (
           <TouchableOpacity
-            key={category.id}
+            key={category._id}
             style={[
               styles.categoryCard,
-              selectedCategory === category.id && styles.categoryCardActive,
+              selectedCategory === category._id && styles.categoryCardActive,
             ]}
-            onPress={() => setSelectedCategory(category.id)}
+            onPress={() => setSelectedCategory(category._id)}
           >
-            <View
-              style={[
-                styles.categoryIcon,
-                { backgroundColor: category.color + '20' },
-              ]}
-            >
-              <Icon name={category.icon} size={24} color={category.color} />
-            </View>
-            <Text style={styles.categoryName}>{category.name}</Text>
+            {category.imageUrl ? (
+              <Image
+                // source={{ uri: category.imageUrl }}
+                source={require('../../assets/images/bike-cate.png')}
+                style={styles.categoryImage}
+              />
+            ) : (
+              <View
+                style={[
+                  styles.categoryIcon,
+                  { backgroundColor: colors.gray[200] },
+                ]}
+              >
+                <Icon
+                  name="bicycle-outline"
+                  size={24}
+                  color={colors.gray[500]}
+                />
+              </View>
+            )}
+            <Text style={styles.categoryName} numberOfLines={2}>
+              {category.name}
+            </Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -441,6 +447,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
+  },
+  categoryImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginBottom: 8,
+    backgroundColor: colors.gray[100],
   },
   categoryName: {
     fontSize: 12,
