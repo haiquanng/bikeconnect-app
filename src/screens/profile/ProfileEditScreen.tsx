@@ -10,10 +10,12 @@ import {
   Keyboard,
   Image,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { launchImageLibrary } from 'react-native-image-picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors } from '../../theme';
 import { Button } from '../../components/atoms';
 import { useAppSelector, useAppDispatch } from '../../redux/hooks';
@@ -28,14 +30,52 @@ const ProfileEditScreen = ({ navigation }: any) => {
   const [fullName, setFullName] = useState(user?.fullName || '');
   const [email, _setEmail] = useState(user?.email || '');
   const [phone, setPhone] = useState(user?.phone || '');
+  const [gender, setGender] = useState(user?.gender || '');
+  const [dateOfBirth, setDateOfBirth] = useState(user?.dateOfBirth || '');
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || '');
   const [loading, setLoading] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(() => {
+    if (user?.dateOfBirth) {
+      return new Date(user.dateOfBirth);
+    }
+    return new Date(1999, 0, 1); // Default to Jan 1, 1999
+  });
 
   const validatePhone = (phoneInput: string): boolean => {
     const phoneRegex = /^[0-9]{10,11}$/;
     return phoneRegex.test(phoneInput);
   };
+
+  const formatDateToDisplay = (date: Date): string => {
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const handleDateChange = (event: any, date?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+
+    if (date) {
+      setSelectedDate(date);
+      setDateOfBirth(date.toISOString());
+    }
+  };
+
+  const handleDatePickerPress = () => {
+    Keyboard.dismiss();
+    setShowDatePicker(true);
+  };
+
+  const genderOptions = [
+    { label: 'Nam', value: 'male' },
+    { label: 'Nữ', value: 'female' },
+    { label: 'Khác', value: 'other' },
+  ];
 
   const handlePickImage = async () => {
     try {
@@ -95,6 +135,8 @@ const ProfileEditScreen = ({ navigation }: any) => {
       const updatedUser = await authService.updateProfile({
         fullName,
         phone,
+        gender,
+        dateOfBirth,
         avatarUrl: avatarUrl || undefined,
       });
       dispatch(updateUser(updatedUser));
@@ -210,6 +252,72 @@ const ProfileEditScreen = ({ navigation }: any) => {
             <Icon name="call-outline" size={20} color={colors.gray[400]} />
           </View>
         </View>
+
+        {/* Date of Birth */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Ngày sinh</Text>
+          <TouchableOpacity
+            style={styles.inputContainer}
+            onPress={handleDatePickerPress}
+          >
+            <Text
+              style={[styles.dateText, !dateOfBirth && styles.placeholderText]}
+            >
+              {dateOfBirth ? formatDateToDisplay(selectedDate) : 'DD/MM/YYYY'}
+            </Text>
+            <Icon name="calendar-outline" size={20} color={colors.gray[400]} />
+          </TouchableOpacity>
+        </View>
+
+        {/* DatePicker Modal */}
+        {showDatePicker && (
+          <DateTimePicker
+            value={selectedDate}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={handleDateChange}
+            maximumDate={new Date()}
+            minimumDate={new Date(1900, 0, 1)}
+          />
+        )}
+
+        {/* iOS DatePicker Confirm Button */}
+        {showDatePicker && Platform.OS === 'ios' && (
+          <View style={styles.datePickerButtonContainer}>
+            <TouchableOpacity
+              style={styles.datePickerButton}
+              onPress={() => setShowDatePicker(false)}
+            >
+              <Text style={styles.datePickerButtonText}>Xác nhận</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Gender */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Giới tính</Text>
+          <View style={styles.genderContainer}>
+            {genderOptions.map(option => (
+              <TouchableOpacity
+                key={option.value}
+                style={[
+                  styles.genderOption,
+                  gender === option.value && styles.genderOptionActive,
+                ]}
+                onPress={() => setGender(option.value)}
+              >
+                <Text
+                  style={[
+                    styles.genderOptionText,
+                    gender === option.value && styles.genderOptionTextActive,
+                  ]}
+                >
+                  {option.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
       </ScrollView>
 
       {/* Fixed Bottom Button */}
@@ -319,6 +427,32 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 4,
   },
+  genderContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  genderOption: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    backgroundColor: colors.white,
+    alignItems: 'center',
+  },
+  genderOptionActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + '10',
+  },
+  genderOptionText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.textSecondary,
+  },
+  genderOptionTextActive: {
+    color: colors.primary,
+  },
   bottomContainer: {
     position: 'absolute',
     bottom: 0,
@@ -343,6 +477,32 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: colors.primary,
     height: 56,
+  },
+  dateText: {
+    flex: 1,
+    fontSize: 16,
+    color: colors.textPrimary,
+  },
+  placeholderText: {
+    color: colors.gray[300],
+  },
+  datePickerButtonContainer: {
+    alignItems: 'center',
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  datePickerButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    minWidth: 120,
+  },
+  datePickerButtonText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
 

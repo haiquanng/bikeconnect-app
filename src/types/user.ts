@@ -14,6 +14,8 @@ export interface User {
   email: string;
   fullName?: string;
   phone?: string;
+  gender?: string;
+  dateOfBirth?: string;
   address?: Address;
   avatarUrl?: string;
   roles: UserRole[];
@@ -49,6 +51,8 @@ export interface AuthResponse {
     avatarUrl?: string;
     roles: UserRole[];
     isVerified: boolean;
+    gender?: string;
+    dateOfBirth?: string;
     authProvider: AuthProvider;
     idToken: string;
     refreshToken: string;
