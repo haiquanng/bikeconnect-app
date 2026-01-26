@@ -52,8 +52,7 @@ const LoginScreen = ({ navigation }: any) => {
       // Call API
       const response = await authService.login({ email, password });
 
-      // Transform response data to User format
-      const user = {
+      const basicUser = {
         id: response.data.id,
         email: response.data.email,
         fullName: response.data.fullName,
@@ -65,15 +64,36 @@ const LoginScreen = ({ navigation }: any) => {
         isActive: true,
       };
 
+      const tokens = {
+        idToken: response.data.idToken,
+        refreshToken: response.data.refreshToken,
+        expiresIn: response.data.expiresIn,
+      };
+
       // Store user data and tokens in Redux
       dispatch(
         loginSuccess({
-          user,
-          idToken: response.data.idToken,
-          refreshToken: response.data.refreshToken,
-          expiresIn: response.data.expiresIn,
+          user: basicUser,
+          ...tokens,
         }),
       );
+
+      try {
+        const fullProfile = await authService.getProfile();
+        dispatch(
+          loginSuccess({
+            user: fullProfile,
+            ...tokens,
+          }),
+        );
+        // console.log('Full profile loaded:', fullProfile);
+      } catch (profileError) {
+        console.log(
+          'Failed to fetch full profile, using basic data:',
+          profileError,
+        );
+        // Continue with basic user data
+      }
 
       // Dismiss keyboard and stop loading
       setLoading(false);
