@@ -2,10 +2,13 @@ export type UserRole = 'BUYER' | 'SELLER' | 'ADMIN' | 'INSPECTOR';
 
 export type AuthProvider = 'google' | 'email';
 export interface Address {
+  _id?: string;
+  label: string;
   street?: string;
-  city?: string;
-  districts?: string;
   ward?: string;
+  district?: string;
+  city?: string;
+  isDefault?: boolean;
 }
 
 export interface User {
@@ -14,9 +17,9 @@ export interface User {
   email: string;
   fullName?: string;
   phone?: string;
-  gender?: string;
+  gender?: 'male' | 'female' | 'other';
   dateOfBirth?: string;
-  address?: Address;
+  addresses?: Address[];
   avatarUrl?: string;
   roles: UserRole[];
   reputationScore: number;
