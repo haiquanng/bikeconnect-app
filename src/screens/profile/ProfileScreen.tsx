@@ -58,6 +58,13 @@ const ProfileScreen = ({ navigation }: any) => {
       showChevron: true,
     },
     {
+      id: 'addresses',
+      title: 'Địa chỉ',
+      icon: 'location-outline',
+      onPress: () => navigation.navigate('AddressList'),
+      showChevron: true,
+    },
+    {
       id: 'change-password',
       title: 'Đổi mật khẩu',
       icon: 'lock-closed-outline',

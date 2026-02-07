@@ -139,7 +139,7 @@ export const authService = {
    */
   async getProfile(): Promise<User> {
     try {
-      const response = await apiClient.get<ProfileResponse>('/auth/profile');
+      const response = await apiClient.get<ProfileResponse>('/users/profile');
 
       if (!response.success) {
         throw new Error('Failed to get profile');
@@ -158,7 +158,7 @@ export const authService = {
   async updateProfile(userData: Partial<User>): Promise<User> {
     try {
       const response = await apiClient.put<ProfileResponse>(
-        '/auth/profile',
+        '/users/profile',
         userData,
       );
 

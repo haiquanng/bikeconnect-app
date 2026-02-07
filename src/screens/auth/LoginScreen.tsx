@@ -23,6 +23,7 @@ import {
   loginStart,
   loginSuccess,
   loginFailure,
+  updateUser,
 } from '../../redux/auth/authSlice';
 
 const LoginScreen = ({ navigation }: any) => {
@@ -80,19 +81,12 @@ const LoginScreen = ({ navigation }: any) => {
 
       try {
         const fullProfile = await authService.getProfile();
-        dispatch(
-          loginSuccess({
-            user: fullProfile,
-            ...tokens,
-          }),
-        );
-        // console.log('Full profile loaded:', fullProfile);
+        dispatch(updateUser(fullProfile));
       } catch (profileError) {
         console.log(
           'Failed to fetch full profile, using basic data:',
           profileError,
         );
-        // Continue with basic user data
       }
 
       // Dismiss keyboard and stop loading
