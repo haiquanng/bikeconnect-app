@@ -5,10 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Alert,
-  ActivityIndicator,
 } from 'react-native';
-import { globalLoading } from '../../components/ui/GlobalLoading';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -17,6 +14,7 @@ import { Button } from '../../components/atoms';
 import { useAppSelector, useAppDispatch } from '../../redux/hooks';
 import { updateUser } from '../../redux/auth/authSlice';
 import { addressService } from '../../api/addressService';
+import { globalLoading } from '../../components/ui/GlobalLoading';
 import { Address } from '../../types/user';
 
 const AddressListScreen = ({ navigation }: any) => {
@@ -25,7 +23,6 @@ const AddressListScreen = ({ navigation }: any) => {
   const [addresses, setAddresses] = useState<Address[]>(
     user?.addresses || [],
   );
-  const [deleting, setDeleting] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -33,37 +30,6 @@ const AddressListScreen = ({ navigation }: any) => {
       setAddresses(freshAddresses);
     }, [user?.addresses]),
   );
-
-  const handleDelete = (address: Address) => {
-    Alert.alert(
-      'Xoá địa chỉ',
-      `Bạn có chắc chắn muốn xoá "${address.label}"?`,
-      [
-        { text: 'Hủy', style: 'cancel' },
-        {
-          text: 'Xoá',
-          style: 'destructive',
-          onPress: async () => {
-            if (!address._id) {
-              return;
-            }
-            setDeleting(address._id);
-            try {
-              const updatedAddresses = await addressService.deleteAddress(
-                address._id,
-              );
-              dispatch(updateUser({ addresses: updatedAddresses }));
-              setAddresses(updatedAddresses);
-            } catch (error: any) {
-              Alert.alert('Lỗi', error.message || 'Không thể xoá địa chỉ');
-            } finally {
-              setDeleting(null);
-            }
-          },
-        },
-      ],
-    );
-  };
 
   const handleSetDefault = async (address: Address) => {
     if (!address._id || address.isDefault) {
@@ -77,6 +43,7 @@ const AddressListScreen = ({ navigation }: any) => {
       dispatch(updateUser({ addresses: updatedAddresses }));
       setAddresses(updatedAddresses);
     } catch (error: any) {
+      const { Alert } = require('react-native');
       Alert.alert('Lỗi', error.message || 'Không thể đặt địa chỉ mặc định');
     } finally {
       globalLoading.hide();
@@ -84,7 +51,7 @@ const AddressListScreen = ({ navigation }: any) => {
   };
 
   const formatAddress = (address: Address): string => {
-    const parts = [address.street, address.ward, address.district, address.city];
+    const parts = [address.street, address.ward, address.city];
     return parts.filter(Boolean).join(', ');
   };
 
@@ -122,61 +89,31 @@ const AddressListScreen = ({ navigation }: any) => {
           addresses.map((address, index) => (
             <TouchableOpacity
               key={address._id || index}
-              style={styles.addressCard}
-              onPress={() => handleSetDefault(address)}
-              onLongPress={() => handleDelete(address)}
+              style={[
+                styles.addressItem,
+                index < addresses.length - 1 && styles.addressItemBorder,
+              ]}
+              onPress={() => navigation.navigate('AddAddress', { address })}
+              onLongPress={() => handleSetDefault(address)}
             >
-              <View style={styles.cardLeft}>
-                <View style={styles.iconContainer}>
-                  <Icon
-                    name="location-outline"
-                    size={24}
-                    color={colors.primary}
-                  />
-                </View>
-                <View style={styles.cardContent}>
-                  <View style={styles.labelRow}>
-                    <Text style={styles.addressLabel}>{address.label}</Text>
-                    {address.isDefault && (
-                      <View style={styles.defaultBadge}>
-                        <Text style={styles.defaultBadgeText}>Mặc định</Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text style={styles.addressDetail} numberOfLines={2}>
-                    {formatAddress(address)}
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.cardActions}>
-                <TouchableOpacity
-                  style={styles.editButton}
-                  onPress={() =>
-                    navigation.navigate('AddAddress', { address })
-                  }
-                >
-                  <Icon
-                    name="create-outline"
-                    size={20}
-                    color={colors.gray[500]}
-                  />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.deleteButton}
-                  onPress={() => handleDelete(address)}
-                  disabled={deleting === address._id}
-                >
-                  {deleting === address._id ? (
-                    <ActivityIndicator size="small" color={colors.error} />
-                  ) : (
-                    <Icon
-                      name="trash-outline"
-                      size={20}
-                      color={colors.error}
-                    />
+              <View style={styles.addressContent}>
+                <View style={styles.labelRow}>
+                  <Text style={styles.addressLabel}>{address.label}</Text>
+                  {address.isDefault && (
+                    <View style={styles.defaultBadge}>
+                      <Text style={styles.defaultBadgeText}>Mặc định</Text>
+                    </View>
                   )}
-                </TouchableOpacity>
+                </View>
+                <Text style={styles.addressDetail} numberOfLines={2}>
+                  {formatAddress(address)}
+                </Text>
               </View>
+              <Icon
+                name="chevron-forward"
+                size={20}
+                color={colors.gray[400]}
+              />
             </TouchableOpacity>
           ))
         )}
@@ -221,7 +158,6 @@ const styles = StyleSheet.create({
     width: 40,
   },
   scrollContent: {
-    padding: 16,
     paddingBottom: 120,
   },
   emptyContainer: {
@@ -241,32 +177,17 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: 'center',
   },
-  addressCard: {
+  addressItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.gray[200],
-    padding: 16,
-    marginBottom: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
-  cardLeft: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    flex: 1,
+  addressItemBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.gray[200],
   },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primary + '15',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  cardContent: {
+  addressContent: {
     flex: 1,
   },
   labelRow: {
@@ -295,18 +216,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     lineHeight: 20,
-  },
-  cardActions: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 8,
-    marginLeft: 8,
-  },
-  editButton: {
-    padding: 8,
-  },
-  deleteButton: {
-    padding: 8,
   },
   bottomContainer: {
     position: 'absolute',

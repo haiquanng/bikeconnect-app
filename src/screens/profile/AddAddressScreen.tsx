@@ -8,6 +8,7 @@ import {
   ScrollView,
   Alert,
   Keyboard,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -38,6 +39,7 @@ const AddAddressScreen = ({ navigation, route }: any) => {
   const [ward, setWard] = useState(editAddress?.ward || '');
   const [isDefault, setIsDefault] = useState(editAddress?.isDefault || false);
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const [showCityPicker, setShowCityPicker] = useState(false);
   const [showWardPicker, setShowWardPicker] = useState(false);
@@ -115,6 +117,37 @@ const AddAddressScreen = ({ navigation, route }: any) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDelete = () => {
+    if (!editAddress?._id) {
+      return;
+    }
+    Alert.alert(
+      'Xoá địa chỉ',
+      `Bạn có chắc chắn muốn xoá "${editAddress.label}"?`,
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xoá',
+          style: 'destructive',
+          onPress: async () => {
+            setDeleting(true);
+            try {
+              const updatedAddresses = await addressService.deleteAddress(
+                editAddress._id!,
+              );
+              dispatch(updateUser({ addresses: updatedAddresses }));
+              navigation.goBack();
+            } catch (error: any) {
+              Alert.alert('Lỗi', error.message || 'Không thể xoá địa chỉ');
+            } finally {
+              setDeleting(false);
+            }
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -225,16 +258,41 @@ const AddAddressScreen = ({ navigation, route }: any) => {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Fixed Bottom Button */}
+      {/* Fixed Bottom */}
       <View style={styles.bottomContainer}>
-        <Button
-          title={isEditMode ? 'Cập nhật' : 'Thêm địa chỉ'}
-          onPress={handleSubmit}
-          loading={loading}
-          disabled={loading}
-          style={styles.submitButton}
-          size="md"
-        />
+        {isEditMode ? (
+          <View style={styles.bottomRow}>
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={handleDelete}
+              disabled={deleting}
+            >
+              {deleting ? (
+                <ActivityIndicator size="small" color={colors.error} />
+              ) : (
+                <Icon name="trash-outline" size={22} color={colors.error} />
+              )}
+              <Text style={styles.deleteText}>Xoá</Text>
+            </TouchableOpacity>
+            <Button
+              title="Hoàn thành"
+              onPress={handleSubmit}
+              loading={loading}
+              disabled={loading || deleting}
+              style={styles.submitButtonFlex}
+              size="md"
+            />
+          </View>
+        ) : (
+          <Button
+            title="Hoàn thành"
+            onPress={handleSubmit}
+            loading={loading}
+            disabled={loading}
+            style={styles.submitButton}
+            size="md"
+          />
+        )}
       </View>
 
       {/* Picker Modals */}
@@ -368,7 +426,34 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
+  bottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    height: 56,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.error,
+  },
+  deleteText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.error,
+  },
   submitButton: {
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+    height: 56,
+  },
+  submitButtonFlex: {
+    flex: 1,
     borderRadius: 12,
     backgroundColor: colors.primary,
     height: 56,
