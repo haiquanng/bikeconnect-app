@@ -3,6 +3,33 @@
 export type BicycleCondition = 'NEW' | 'LIKE_NEW' | 'GOOD' | 'FAIR' | 'POOR';
 export type BicycleStatus = 'PENDING' | 'APPROVED' | 'SOLD' | 'HIDDEN' | 'REJECTED';
 
+export interface BicycleListing {
+  _id: string;
+  title: string;
+  description?: string;
+  price: number;
+  originalPrice?: number;
+  condition: BicycleCondition;
+  usageMonths?: number;
+  viewCount: number;
+  status: BicycleStatus;
+  isInspected: boolean;
+  isFeatured?: boolean;
+  category?: { _id: string; name: string };
+  brand?: { _id: string; name: string };
+  seller?: { _id: string; fullName: string; avatarUrl?: string; reputationScore: number };
+  specifications?: {
+    yearManufactured?: number;
+    frameSize?: string;
+    frameMaterial?: string;
+    color?: string;
+  };
+  location?: { address?: string; city?: string };
+  images: MediaItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Brand {
   _id: string;
   name: string;
