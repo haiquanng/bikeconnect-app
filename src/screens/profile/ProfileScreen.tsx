@@ -13,6 +13,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { colors } from '../../theme';
 import { useAppSelector, useAppDispatch } from '../../redux/hooks';
 import { logout } from '../../redux/auth/authSlice';
+import { authStorage } from '../../utils/authStorage';
 
 interface MenuItem {
   id: string;
@@ -41,6 +42,7 @@ const ProfileScreen = ({ navigation }: any) => {
           style: 'destructive',
           onPress: () => {
             dispatch(logout());
+            authStorage.clear();
             navigation.replace('Welcome');
           },
         },
