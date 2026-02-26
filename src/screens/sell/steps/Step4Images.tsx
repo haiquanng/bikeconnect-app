@@ -14,6 +14,7 @@ import Toast from 'react-native-toast-message';
 import { uploadImageToCloudinary } from '../../../api/uploadService';
 import { colors } from '../../../theme';
 import type { MediaItem, CreateListingFormData } from '../../../types/bicycle';
+import ImageGuideModal from '../ImageGuideModal';
 
 interface Props {
   formData: CreateListingFormData;
@@ -25,6 +26,7 @@ const MIN_IMAGES = 3;
 
 const Step4Images: React.FC<Props> = ({ formData, onChange }) => {
   const [uploading, setUploading] = useState(false);
+  const [guideVisible, setGuideVisible] = useState(false);
 
   const handlePickImages = async () => {
     const remaining = MAX_IMAGES - formData.images.length;
@@ -97,6 +99,17 @@ const Step4Images: React.FC<Props> = ({ formData, onChange }) => {
 
   return (
     <View>
+      {/* Guide button */}
+      <TouchableOpacity
+        style={styles.guideBtn}
+        onPress={() => setGuideVisible(true)}
+        activeOpacity={0.7}
+      >
+        <Icon name="help-circle-outline" size={18} color={colors.primaryGreen} />
+        <Text style={styles.guideBtnText}>Hướng dẫn đăng ảnh đúng quy định</Text>
+        <Icon name="chevron-forward" size={16} color={colors.primaryGreen} />
+      </TouchableOpacity>
+
       {/* Empty state — upload prompt */}
       {!hasImages && (
         <TouchableOpacity
@@ -207,6 +220,11 @@ const Step4Images: React.FC<Props> = ({ formData, onChange }) => {
           ))}
         </View>
       </View>
+
+      <ImageGuideModal
+        visible={guideVisible}
+        onClose={() => setGuideVisible(false)}
+      />
     </View>
   );
 };
@@ -215,6 +233,24 @@ const THUMB_SIZE = 88;
 const COVER_SIZE = 140;
 
 const styles = StyleSheet.create({
+  guideBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    marginBottom: 14,
+  },
+  guideBtnText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.primaryGreen,
+  },
   emptyUpload: {
     borderWidth: 2,
     borderStyle: 'dashed',
