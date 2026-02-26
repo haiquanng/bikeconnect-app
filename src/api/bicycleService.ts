@@ -39,6 +39,7 @@ export interface BicyclesParams {
   page?: number;
   limit?: number;
   sort?: string;
+  condition?: string;
   category?: string;
   brand?: string;
   minPrice?: number;
