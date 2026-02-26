@@ -27,6 +27,11 @@ interface BicyclesResponse {
   data: BicycleListing[];
 }
 
+interface BicycleDetailResponse {
+  success: boolean;
+  data: BicycleListing;
+}
+
 export interface MyListingsParams {
   status?: BicycleStatus;
   page?: number;
@@ -65,5 +70,10 @@ export const bicycleService = {
 
   async getBicycles(params?: BicyclesParams): Promise<BicyclesResponse> {
     return apiClient.get<BicyclesResponse>('/bicycles', { params });
+  },
+
+  async getBicycleById(id: string): Promise<BicycleListing> {
+    const response = await apiClient.get<BicycleDetailResponse>(`/bicycles/${id}`);
+    return response.data;
   },
 };

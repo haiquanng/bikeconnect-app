@@ -24,58 +24,64 @@ import NotificationsScreen from '../screens/profile/NotificationsScreen';
 import HelpScreen from '../screens/profile/HelpScreen';
 import SearchScreen from '../screens/main/SearchScreen';
 import ChatDetailScreen from '../screens/main/ChatDetailScreen';
+import BicycleDetailScreen from '../screens/main/BicycleDetailScreen';
 import CreateListingScreen from '../screens/sell/CreateListingScreen';
+import Toast from 'react-native-toast-message';
 
 const Stack = createNativeStackNavigator();
 
 const AppNavigator = () => {
   return (
     <Provider store={store}>
-      <NavigationContainer>
-        <Stack.Navigator
-          screenOptions={{
-            headerShown: false,
-          }}
-        >
-          <Stack.Screen name="Splash" component={SplashScreen} />
-          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-          <Stack.Screen name="Welcome" component={WelcomeScreen} />
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="Register" component={RegisterScreen} />
-          <Stack.Screen
-            name="ForgotPasswordEmail"
-            component={ForgotPasswordEmailScreen}
-          />
-          <Stack.Screen
-            name="ForgotPasswordOTP"
-            component={ForgotPasswordOTPScreen}
-          />
-          <Stack.Screen
-            name="ForgotPasswordNewPassword"
-            component={ForgotPasswordNewPasswordScreen}
-          />
-          <Stack.Screen
-            name="ForgotPasswordSuccess"
-            component={ForgotPasswordSuccessScreen}
-          />
-          <Stack.Screen name="Main" component={BottomTabNavigator} />
-          <Stack.Screen name="Search" component={SearchScreen} />
-          <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
-          <Stack.Screen name="AddressList" component={AddressListScreen} />
-          <Stack.Screen name="AddAddress" component={AddAddressScreen} />
-          <Stack.Screen
-            name="ChangePassword"
-            component={ChangePasswordScreen}
-          />
-          <Stack.Screen name="Orders" component={OrdersScreen} />
-          <Stack.Screen name="Listings" component={ListingsScreen} />
-          <Stack.Screen name="Sales" component={SalesScreen} />
-          <Stack.Screen name="Notifications" component={NotificationsScreen} />
-          <Stack.Screen name="Help" component={HelpScreen} />
-          <Stack.Screen name="ChatDetail" component={ChatDetailScreen} />
-          <Stack.Screen name="CreateListing" component={CreateListingScreen} />
-        </Stack.Navigator>
-      </NavigationContainer>
+      <>
+        <NavigationContainer>
+          <Stack.Navigator
+            screenOptions={{
+              headerShown: false,
+            }}
+          >
+            <Stack.Screen name="Splash" component={SplashScreen} />
+            <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+            <Stack.Screen name="Welcome" component={WelcomeScreen} />
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="Register" component={RegisterScreen} />
+            <Stack.Screen
+              name="ForgotPasswordEmail"
+              component={ForgotPasswordEmailScreen}
+            />
+            <Stack.Screen
+              name="ForgotPasswordOTP"
+              component={ForgotPasswordOTPScreen}
+            />
+            <Stack.Screen
+              name="ForgotPasswordNewPassword"
+              component={ForgotPasswordNewPasswordScreen}
+            />
+            <Stack.Screen
+              name="ForgotPasswordSuccess"
+              component={ForgotPasswordSuccessScreen}
+            />
+            <Stack.Screen name="Main" component={BottomTabNavigator} />
+            <Stack.Screen name="Search" component={SearchScreen} />
+            <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
+            <Stack.Screen name="AddressList" component={AddressListScreen} />
+            <Stack.Screen name="AddAddress" component={AddAddressScreen} />
+            <Stack.Screen
+              name="ChangePassword"
+              component={ChangePasswordScreen}
+            />
+            <Stack.Screen name="Orders" component={OrdersScreen} />
+            <Stack.Screen name="Listings" component={ListingsScreen} />
+            <Stack.Screen name="Sales" component={SalesScreen} />
+            <Stack.Screen name="Notifications" component={NotificationsScreen} />
+            <Stack.Screen name="Help" component={HelpScreen} />
+            <Stack.Screen name="ChatDetail" component={ChatDetailScreen} />
+            <Stack.Screen name="CreateListing" component={CreateListingScreen} />
+            <Stack.Screen name="BicycleDetail" component={BicycleDetailScreen} />
+          </Stack.Navigator>
+        </NavigationContainer>
+        <Toast />
+      </>
     </Provider>
   );
 };

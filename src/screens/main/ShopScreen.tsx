@@ -356,8 +356,8 @@ const ShopScreen = ({ navigation }: any) => {
           keyExtractor={item => item._id}
           renderItem={({ item }) =>
             viewMode === 'list'
-              ? <BicycleListCard item={item} />
-              : <BicycleGridCard item={item} />
+              ? <BicycleListCard item={item} onPress={() => navigation.navigate('BicycleDetail', { id: item._id })} />
+              : <BicycleGridCard item={item} onPress={() => navigation.navigate('BicycleDetail', { id: item._id })} />
           }
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
