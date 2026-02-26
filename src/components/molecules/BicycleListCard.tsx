@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
     borderColor: colors.gray[200],
   },
   imageBox: {
-    width: 120,
+    width: 160,
     height: 120,
     backgroundColor: colors.gray[100],
     position: 'relative',

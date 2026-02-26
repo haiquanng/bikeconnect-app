@@ -25,6 +25,7 @@ interface Props {
   sort: string;
   condition: BicycleCondition | null;
   brandName: string | null;
+  categoryName: string | null;
   minPrice: string;
   maxPrice: string;
   onOpenSort: () => void;
@@ -32,22 +33,23 @@ interface Props {
   onClearCondition: () => void;
   onOpenBrand: () => void;
   onClearBrand: () => void;
+  onClearCategory: () => void;
   onOpenPrice: () => void;
   onClearPrice: () => void;
   onClearAll: () => void;
 }
 
 const ShopFilterBar: React.FC<Props> = ({
-  sort, condition, brandName, minPrice, maxPrice,
+  sort, condition, brandName, categoryName, minPrice, maxPrice,
   onOpenSort, onOpenCondition, onClearCondition,
-  onOpenBrand, onClearBrand, onOpenPrice, onClearPrice, onClearAll,
+  onOpenBrand, onClearBrand, onClearCategory, onOpenPrice, onClearPrice, onClearAll,
 }) => {
   const sortActive  = sort !== '-createdAt';
   const priceActive = minPrice !== '' || maxPrice !== '';
   const priceLabel  = priceActive
     ? `${minPrice ? formatPriceShort(Number(minPrice)) : '0'} – ${maxPrice ? formatPriceShort(Number(maxPrice)) : '∞'}`
     : null;
-  const hasActive = sortActive || condition !== null || brandName !== null || priceActive;
+  const hasActive = sortActive || condition !== null || brandName !== null || categoryName !== null || priceActive;
 
   return (
     <ScrollView
@@ -56,6 +58,22 @@ const ShopFilterBar: React.FC<Props> = ({
       style={styles.row}
       contentContainerStyle={styles.content}
     >
+      {/* Category (from Home navigation) */}
+      {categoryName !== null && (
+        <TouchableOpacity style={[styles.chip, styles.chipActive]}>
+          <Icon name="apps-outline" size={15} color={colors.white} />
+          <Text style={[styles.chipText, styles.chipTextActive]} numberOfLines={1}>
+            {categoryName}
+          </Text>
+          <TouchableOpacity
+            onPress={onClearCategory}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <Icon name="close-circle" size={15} color={colors.white} />
+          </TouchableOpacity>
+        </TouchableOpacity>
+      )}
+
       {/* Sort */}
       <TouchableOpacity
         style={[styles.chip, sortActive && styles.chipActive]}
