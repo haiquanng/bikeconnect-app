@@ -41,7 +41,7 @@ const CONDITION_OPTIONS: { value: BicycleCondition; label: string }[] = [
 
 type ActiveModal = null | 'sort' | 'condition' | 'brand' | 'price';
 
-const ShopScreen = ({ navigation }: any) => {
+const ShopScreen = ({ navigation, route }: any) => {
   const [listings, setListings]   = useState<BicycleListing[]>([]);
   const [loading, setLoading]     = useState(true);
   const [viewMode, setViewMode]   = useState<ViewMode>('list');
@@ -50,6 +50,11 @@ const ShopScreen = ({ navigation }: any) => {
   const [sort, setSort]           = useState('-createdAt');
   const [condition, setCondition] = useState<BicycleCondition | null>(null);
   const [brand, setBrand]         = useState<Brand | null>(null);
+  const [category, setCategory]   = useState<{ _id: string; name: string } | null>(
+    route.params?.categoryId
+      ? { _id: route.params.categoryId, name: route.params.categoryName ?? '' }
+      : null,
+  );
   const [minPrice, setMinPrice]   = useState('');
   const [maxPrice, setMaxPrice]   = useState('');
 
@@ -68,11 +73,19 @@ const ShopScreen = ({ navigation }: any) => {
     }, []),
   );
 
+  // Watch route params for category updates from Home navigation
+  useEffect(() => {
+    if (route.params?.categoryId) {
+      setCategory({ _id: route.params.categoryId, name: route.params.categoryName ?? '' });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route.params?.categoryId]);
+
   useEffect(() => {
     if (!filterMounted.current) { filterMounted.current = true; return; }
     loadListings();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sort, condition, brand, minPrice, maxPrice]);
+  }, [sort, condition, brand, category, minPrice, maxPrice]);
 
   const loadListings = async () => {
     try {
@@ -80,6 +93,7 @@ const ShopScreen = ({ navigation }: any) => {
       const params: Record<string, any> = { sort, limit: 50 };
       if (condition) { params.condition = condition; }
       if (brand)     { params.brand     = brand._id; }
+      if (category)  { params.category  = category._id; }
       if (minPrice)  { params.minPrice  = Number(minPrice); }
       if (maxPrice)  { params.maxPrice  = Number(maxPrice); }
       const res = await bicycleService.getBicycles(params);
@@ -118,12 +132,13 @@ const ShopScreen = ({ navigation }: any) => {
     setSort('-createdAt');
     setCondition(null);
     setBrand(null);
+    setCategory(null);
     setMinPrice('');
     setMaxPrice('');
   };
 
   const hasActiveFilters =
-    condition !== null || brand !== null || minPrice !== '' || maxPrice !== '' || sort !== '-createdAt';
+    condition !== null || brand !== null || category !== null || minPrice !== '' || maxPrice !== '' || sort !== '-createdAt';
 
   /* ─── Header ─── */
   const renderHeader = () => (
@@ -141,6 +156,7 @@ const ShopScreen = ({ navigation }: any) => {
         sort={sort}
         condition={condition}
         brandName={brand?.name ?? null}
+        categoryName={category?.name ?? null}
         minPrice={minPrice}
         maxPrice={maxPrice}
         onOpenSort={() => setActiveModal('sort')}
@@ -148,6 +164,7 @@ const ShopScreen = ({ navigation }: any) => {
         onClearCondition={() => setCondition(null)}
         onOpenBrand={openBrandModal}
         onClearBrand={() => setBrand(null)}
+        onClearCategory={() => setCategory(null)}
         onOpenPrice={openPriceModal}
         onClearPrice={() => { setMinPrice(''); setMaxPrice(''); }}
         onClearAll={clearAllFilters}
