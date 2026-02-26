@@ -1,5 +1,5 @@
 import { apiClient } from './apiClient';
-import type { Brand, CreateBicycleRequest } from '../types/bicycle';
+import type { Brand, BicycleListing, BicycleStatus, CreateBicycleRequest } from '../types/bicycle';
 
 interface BrandsResponse {
   success: boolean;
@@ -12,27 +12,58 @@ interface CreateBicycleResponse {
   data: any;
 }
 
+interface MyListingsResponse {
+  success: boolean;
+  data: BicycleListing[];
+  pagination: { page: number; limit: number; total: number; totalPages: number };
+}
+
+interface BicyclesResponse {
+  success: boolean;
+  count: number;
+  total: number;
+  page: number;
+  totalPages: number;
+  data: BicycleListing[];
+}
+
+export interface MyListingsParams {
+  status?: BicycleStatus;
+  page?: number;
+  limit?: number;
+  sort?: string;
+}
+
+export interface BicyclesParams {
+  status?: BicycleStatus;
+  page?: number;
+  limit?: number;
+  sort?: string;
+  condition?: string;
+  category?: string;
+  brand?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  city?: string;
+  search?: string;
+}
+
 export const bicycleService = {
   async getBrands(): Promise<Brand[]> {
-    try {
-      const response = await apiClient.get<BrandsResponse>('/brands');
-      return response.data;
-    } catch (error: any) {
-      console.error('Get brands error:', error);
-      throw error;
-    }
+    const response = await apiClient.get<BrandsResponse>('/brands');
+    return response.data;
   },
 
   async createBicycle(payload: CreateBicycleRequest): Promise<any> {
-    try {
-      const response = await apiClient.post<CreateBicycleResponse>(
-        '/bicycles',
-        payload,
-      );
-      return response.data;
-    } catch (error: any) {
-      console.error('Create bicycle error:', error);
-      throw error;
-    }
+    const response = await apiClient.post<CreateBicycleResponse>('/bicycles', payload);
+    return response.data;
+  },
+
+  async getMyListings(params?: MyListingsParams): Promise<MyListingsResponse> {
+    return apiClient.get<MyListingsResponse>('/bicycles/my', { params });
+  },
+
+  async getBicycles(params?: BicyclesParams): Promise<BicyclesResponse> {
+    return apiClient.get<BicyclesResponse>('/bicycles', { params });
   },
 };

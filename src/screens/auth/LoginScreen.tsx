@@ -25,6 +25,7 @@ import {
   loginFailure,
   updateUser,
 } from '../../redux/auth/authSlice';
+import { authStorage } from '../../utils/authStorage';
 
 const LoginScreen = ({ navigation }: any) => {
   const dispatch = useAppDispatch();
@@ -82,11 +83,14 @@ const LoginScreen = ({ navigation }: any) => {
       try {
         const fullProfile = await authService.getProfile();
         dispatch(updateUser(fullProfile));
+        authStorage.save({ refreshToken: tokens.refreshToken, user: fullProfile }).catch(() => {});
       } catch (profileError) {
         console.log(
           'Failed to fetch full profile, using basic data:',
           profileError,
         );
+        // Persist basic user if profile fetch fails
+        authStorage.save({ refreshToken: tokens.refreshToken, user: basicUser }).catch(() => {});
       }
 
       // Dismiss keyboard and stop loading
