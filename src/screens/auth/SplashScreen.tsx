@@ -32,7 +32,11 @@ const SplashScreen = () => {
             expiresIn: tokens.expiresIn,
           }));
           // Sync fresh profile in background without blocking navigation
-          authService.getProfile().then(profile => dispatch(updateUser(profile))).catch(() => {});
+          authService.getProfile().then(profile => {
+            const merged = { ...saved.user, ...profile };
+            dispatch(updateUser(merged));
+            authStorage.save({ refreshToken: tokens.refreshToken, user: merged }).catch(() => {});
+          }).catch(() => {});
           navigation.navigate('Main' as never);
           return;
         }

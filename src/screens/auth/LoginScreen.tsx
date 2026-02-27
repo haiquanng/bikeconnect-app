@@ -82,8 +82,10 @@ const LoginScreen = ({ navigation }: any) => {
 
       try {
         const fullProfile = await authService.getProfile();
-        dispatch(updateUser(fullProfile));
-        authStorage.save({ refreshToken: tokens.refreshToken, user: fullProfile }).catch(() => {});
+        //Thêm id từ login response
+        const userToSave = { ...fullProfile, id: basicUser.id };
+        dispatch(updateUser(userToSave));
+        authStorage.save({ refreshToken: tokens.refreshToken, user: userToSave }).catch(() => {});
       } catch (profileError) {
         console.log(
           'Failed to fetch full profile, using basic data:',
