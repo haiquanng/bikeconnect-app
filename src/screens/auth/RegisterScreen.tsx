@@ -16,10 +16,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { colors } from '../../theme';
 import { Button } from '../../components/atoms';
-import { SuccessModal } from '../../components/ui';
 import { authService } from '../../api/authService';
+import { useAppDispatch } from '../../redux/hooks';
+import { loginSuccess } from '../../redux/auth/authSlice';
+import { authStorage } from '../../utils/authStorage';
 
 const RegisterScreen = ({ navigation }: any) => {
+  const dispatch = useAppDispatch();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -28,7 +31,6 @@ const RegisterScreen = ({ navigation }: any) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
 
   const validateEmail = (emailInput: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -47,12 +49,13 @@ const RegisterScreen = ({ navigation }: any) => {
       return;
     }
 
-    if (!email.trim()) {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
       Alert.alert('Lỗi', 'Vui lòng nhập email');
       return;
     }
 
-    if (!validateEmail(email)) {
+    if (!validateEmail(trimmedEmail)) {
       Alert.alert('Lỗi', 'Email không hợp lệ');
       return;
     }
@@ -80,37 +83,46 @@ const RegisterScreen = ({ navigation }: any) => {
     setLoading(true);
 
     try {
-      // Call real API with proper format
-      await authService.register({
-        email,
+      const response = await authService.register({
+        email: trimmedEmail,
         password,
-        fullName,
+        fullName: fullName.trim(),
       });
 
-      // Dismiss keyboard and stop loading
+      // User is authenticated immediately after registration
+      const basicUser = {
+        id: response.data.id,
+        email: response.data.email,
+        fullName: response.data.fullName,
+        avatarUrl: response.data.avatarUrl,
+        roles: response.data.roles,
+        isVerified: response.data.isVerified,
+        authProvider: response.data.authProvider,
+        reputationScore: 0,
+        isActive: true,
+      };
+      const tokens = {
+        idToken: response.data.idToken,
+        refreshToken: response.data.refreshToken,
+        expiresIn: response.data.expiresIn,
+      };
+
+      dispatch(loginSuccess({ user: basicUser, ...tokens }));
+      authStorage.save({ refreshToken: tokens.refreshToken, user: basicUser }).catch(() => {});
+
       setLoading(false);
       Keyboard.dismiss();
 
-      // Show success modal
-      setTimeout(() => {
-        setShowSuccess(true);
-      }, 100);
+      navigation.replace('VerifyEmail', { email: trimmedEmail });
     } catch (error: any) {
       console.log('Register error:', error);
       setLoading(false);
       Keyboard.dismiss();
 
-      // Show error alert
       setTimeout(() => {
         Alert.alert('Đăng ký thất bại', error.message || 'Đã xảy ra lỗi');
       }, 100);
     }
-  };
-
-  const handleSuccessClose = () => {
-    setShowSuccess(false);
-    // Navigate to Login screen
-    navigation.navigate('Login');
   };
 
   return (
@@ -265,13 +277,6 @@ const RegisterScreen = ({ navigation }: any) => {
           </TouchableOpacity>
         </ScrollView>
 
-        {/* Success Modal */}
-        <SuccessModal
-          visible={showSuccess}
-          onClose={handleSuccessClose}
-          title="Đăng ký thành công"
-          subtitle="Vui lòng đăng nhập để tiếp tục"
-        />
       </SafeAreaView>
     </KeyboardAvoidingView>
   );
