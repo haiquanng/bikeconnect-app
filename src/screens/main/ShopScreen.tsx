@@ -96,6 +96,7 @@ const ShopScreen = ({ navigation, route }: any) => {
       if (category)  { params.category  = category._id; }
       if (minPrice)  { params.minPrice  = Number(minPrice); }
       if (maxPrice)  { params.maxPrice  = Number(maxPrice); }
+      params.status = 'APPROVED'
       const res = await bicycleService.getBicycles(params);
       setListings(res.data);
     } catch {
