@@ -28,6 +28,7 @@ const STATUS_TABS: { label: string; value: BicycleStatus | undefined }[] = [
 const STATUS_CONFIG: Record<BicycleStatus, { label: string; color: string; bg: string }> = {
   PENDING:  { label: 'Chờ duyệt',  color: '#92400E', bg: '#FEF3C7' },
   APPROVED: { label: 'Đang bán',   color: '#065F46', bg: '#D1FAE5' },
+  RESERVED: { label: 'Đã đặt',     color: '#1D4ED8', bg: '#DBEAFE' },
   SOLD:     { label: 'Đã bán',     color: '#374151', bg: '#F3F4F6' },
   HIDDEN:   { label: 'Bị ẩn',      color: '#6B7280', bg: '#F9FAFB' },
   REJECTED: { label: 'Từ chối',    color: '#991B1B', bg: '#FEE2E2' },
@@ -78,9 +79,14 @@ const ListingsScreen = ({ navigation }: any) => {
   const renderCard = ({ item }: { item: BicycleListing }) => {
     const status = STATUS_CONFIG[item.status];
     const primaryImage = item.images.find(img => img.isPrimary) ?? item.images[0];
+    const canEdit = item.status !== 'SOLD';
 
     return (
-      <View style={styles.card}>
+      <TouchableOpacity
+        style={styles.card}
+        onPress={() => navigation.navigate('BicycleDetail', { id: item._id })}
+        activeOpacity={0.85}
+      >
         {/* Image */}
         <View style={styles.cardImageBox}>
           {primaryImage ? (
@@ -116,9 +122,21 @@ const ListingsScreen = ({ navigation }: any) => {
             <Text style={styles.cardMetaText}> {item.viewCount}</Text>
           </View>
 
-          <Text style={styles.cardDate}>{formatDate(item.createdAt)}</Text>
+          <View style={styles.cardBottom}>
+            <Text style={styles.cardDate}>{formatDate(item.createdAt)}</Text>
+            {canEdit && (
+              <TouchableOpacity
+                style={styles.editBtn}
+                onPress={() => navigation.navigate('EditListing', { id: item._id })}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Icon name="create-outline" size={14} color={colors.primaryGreen} />
+                <Text style={styles.editBtnText}>Chỉnh sửa</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -346,10 +364,30 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textTertiary,
   },
+  cardBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 2,
+  },
   cardDate: {
     fontSize: 11,
     color: colors.gray[400],
-    marginTop: 2,
+  },
+  editBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.primaryGreen,
+  },
+  editBtnText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.primaryGreen,
   },
   emptyContainer: {
     flex: 1,

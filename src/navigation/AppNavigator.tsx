@@ -28,6 +28,7 @@ import BicycleDetailScreen from '../screens/main/BicycleDetailScreen';
 import CheckoutScreen from '../screens/checkout/CheckoutScreen';
 import OrderDetailScreen from '../screens/profile/OrderDetailScreen';
 import CreateListingScreen from '../screens/sell/CreateListingScreen';
+import EditListingScreen from '../screens/sell/EditListingScreen';
 import Toast from 'react-native-toast-message';
 
 const Stack = createNativeStackNavigator();
@@ -82,6 +83,7 @@ const AppNavigator = () => {
             <Stack.Screen name="BicycleDetail" component={BicycleDetailScreen} />
             <Stack.Screen name="Checkout" component={CheckoutScreen} />
             <Stack.Screen name="OrderDetail" component={OrderDetailScreen} />
+            <Stack.Screen name="EditListing" component={EditListingScreen} />
           </Stack.Navigator>
         </NavigationContainer>
         <Toast />

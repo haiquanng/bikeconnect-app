@@ -76,4 +76,9 @@ export const bicycleService = {
     const response = await apiClient.get<BicycleDetailResponse>(`/bicycles/${id}`);
     return response.data;
   },
+
+  async updateBicycle(id: string, payload: Partial<CreateBicycleRequest>): Promise<BicycleListing> {
+    const response = await apiClient.put<BicycleDetailResponse>(`/bicycles/${id}`, payload);
+    return response.data;
+  },
 };
