@@ -38,4 +38,14 @@ export const orderService = {
     const response = await apiClient.put<OrderResponse>(`/orders/${id}/cancel`, { reason });
     return response.data;
   },
+
+  async confirmOrder(id: string): Promise<Order> {
+    const response = await apiClient.put<OrderResponse>(`/orders/${id}/confirm`);
+    return response.data;
+  },
+
+  async rejectOrder(id: string, reason: string): Promise<Order> {
+    const response = await apiClient.put<OrderResponse>(`/orders/${id}/reject`, { reason });
+    return response.data;
+  },
 };

@@ -20,6 +20,7 @@ const STATUS_TABS: { label: string; value: BicycleStatus | undefined }[] = [
   { label: 'Tất cả', value: undefined },
   { label: 'Chờ duyệt', value: 'PENDING' },
   { label: 'Đang bán', value: 'APPROVED' },
+  { label: 'Đã được đặt', value: 'RESERVED' },
   { label: 'Đã bán', value: 'SOLD' },
   { label: 'Bị ẩn', value: 'HIDDEN' },
   { label: 'Từ chối', value: 'REJECTED' },
@@ -57,7 +58,6 @@ const ListingsScreen = ({ navigation }: any) => {
       if (refresh) {setRefreshing(true);}
       else {setLoading(true);}
       const res = await bicycleService.getMyListings({
-        status: activeStatus,
         sort: '-createdAt',
         limit: 50,
       });
@@ -68,18 +68,20 @@ const ListingsScreen = ({ navigation }: any) => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [activeStatus]);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
       loadListings();
-    }, [loadListings]),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []),
   );
 
   const renderCard = ({ item }: { item: BicycleListing }) => {
     const status = STATUS_CONFIG[item.status];
     const primaryImage = item.images.find(img => img.isPrimary) ?? item.images[0];
-    const canEdit = item.status !== 'SOLD';
+    const canEdit = item.status === 'PENDING';
+    const isReserved = item.status === 'RESERVED';
 
     return (
       <TouchableOpacity
@@ -132,6 +134,16 @@ const ListingsScreen = ({ navigation }: any) => {
               >
                 <Icon name="create-outline" size={14} color={colors.primaryGreen} />
                 <Text style={styles.editBtnText}>Chỉnh sửa</Text>
+              </TouchableOpacity>
+            )}
+            {isReserved && (
+              <TouchableOpacity
+                style={styles.orderBtn}
+                onPress={() => navigation.navigate('SellerOrders')}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Icon name="receipt-outline" size={14} color="#1D4ED8" />
+                <Text style={styles.orderBtnText}>Xem đơn hàng</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -205,7 +217,7 @@ const ListingsScreen = ({ navigation }: any) => {
         </View>
       ) : (
         <FlatList
-          data={listings}
+          data={activeStatus ? listings.filter(l => l.status === activeStatus) : listings}
           keyExtractor={item => item._id}
           renderItem={renderCard}
           contentContainerStyle={styles.listContent}
@@ -373,6 +385,21 @@ const styles = StyleSheet.create({
   cardDate: {
     fontSize: 11,
     color: colors.gray[400],
+  },
+  orderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#1D4ED8',
+  },
+  orderBtnText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#1D4ED8',
   },
   editBtn: {
     flexDirection: 'row',
