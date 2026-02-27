@@ -174,11 +174,11 @@ const OrdersScreen = ({ navigation }: any) => {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backBtn}
-          onPress={() => navigation.navigate('Main', { screen: 'Shop' })}
+          onPress={() => navigation.goBack()}
         >
           <Icon name="arrow-back" size={22} color={colors.white} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Đơn hàng của tôi</Text>
+        <Text style={styles.headerTitle}>Đơn mua của tôi</Text>
         <View style={styles.headerSpacer} />
       </View>
 
