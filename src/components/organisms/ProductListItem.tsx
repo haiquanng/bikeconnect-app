@@ -39,7 +39,7 @@ const ProductListItem: React.FC<ProductListItemProps> = ({
         {isHighDemand && (
           <View style={styles.highDemandBadge}>
             <Icon name="flame" size={12} color={colors.white} />
-            <Text style={styles.highDemandText}>High demand</Text>
+            <Text style={styles.highDemandText}>Được xem nhiều</Text>
           </View>
         )}
       </View>

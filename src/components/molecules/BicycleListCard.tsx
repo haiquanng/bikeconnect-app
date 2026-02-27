@@ -9,13 +9,11 @@ import {
 import Icon from 'react-native-vector-icons/Ionicons';
 import { colors } from '../../theme';
 import type { BicycleListing } from '../../types/bicycle';
+import { formatPrice } from '../../utils/helper';
 
 const CONDITION_LABELS: Record<string, string> = {
   NEW: 'Mới', LIKE_NEW: 'Như mới', GOOD: 'Tốt', FAIR: 'Khá', POOR: 'Cũ',
 };
-
-const formatPrice = (price: number) =>
-  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
 
 interface Props {
   item: BicycleListing;

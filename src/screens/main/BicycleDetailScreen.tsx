@@ -20,12 +20,17 @@ import { bicycleService } from '../../api/bicycleService';
 import type { BicycleListing } from '../../types/bicycle';
 import { showToast } from '../../utils/toast';
 import { useAppSelector } from '../../redux/hooks';
+import SectionHeader from '../../components/molecules/SectionHeader';
+import BicycleListCard from '../../components/molecules/BicycleListCard';
 import { formatPrice, formatDate } from '../../utils/helper';
 
 const CONDITION_LABELS: Record<string, string> = {
-  NEW: 'Mới', LIKE_NEW: 'Như mới', GOOD: 'Tốt', FAIR: 'Khá', POOR: 'Cũ',
+  NEW: 'Mới',
+  LIKE_NEW: 'Như mới',
+  GOOD: 'Tốt',
+  FAIR: 'Khá',
+  POOR: 'Cũ',
 };
-
 
 const DetailRow = ({ label, value }: { label: string; value: string }) => (
   <View style={styles.detailRow}>
@@ -38,13 +43,15 @@ const BicycleDetailScreen = ({ navigation, route }: any) => {
   const { id } = route.params as { id: string };
   const { width: W } = useWindowDimensions();
   const GALLERY_H = W * 0.75; // 4:3 ratio — đổi tỉ lệ ở đây
-  const insets    = useSafeAreaInsets();
+  const insets = useSafeAreaInsets();
   const currentUser = useAppSelector(state => state.auth.user);
 
-  const [item, setItem]             = useState<BicycleListing | null>(null);
-  const [loading, setLoading]       = useState(true);
+  const [item, setItem] = useState<BicycleListing | null>(null);
+  const [loadingRelateItems, setLoadingRelateItems] = useState(true);
+  const [relatedItems, setRelatedItems] = useState<BicycleListing[] | null>(null);
+  const [loading, setLoading] = useState(true);
   const [imageIndex, setImageIndex] = useState(0);
-  const [showSpecs, setShowSpecs]   = useState(false);
+  const [showSpecs, setShowSpecs] = useState(false);
   const [stickyVisible, setStickyVisible] = useState(false);
 
   // Only trigger re-render when threshold is crossed, not on every pixel
@@ -60,6 +67,23 @@ const BicycleDetailScreen = ({ navigation, route }: any) => {
     }
   };
 
+  const loadRelatedItems = async (categoryId: string, currentId: string) => {
+    if (!categoryId) {
+      setRelatedItems([]);
+      setLoadingRelateItems(false);
+      return;
+    }
+    try {
+      setLoadingRelateItems(true);
+      const res = await bicycleService.getBicycles({ category: categoryId, limit: 10 });
+      setRelatedItems(res.data.filter(b => b._id !== currentId));
+    } catch {
+      setRelatedItems([]);
+    } finally {
+      setLoadingRelateItems(false);
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
@@ -67,14 +91,24 @@ const BicycleDetailScreen = ({ navigation, route }: any) => {
         try {
           setLoading(true);
           const data = await bicycleService.getBicycleById(id);
-          if (!cancelled) { setItem(data); }
-        } catch {
-          if (!cancelled) { navigation.goBack(); }
+          if (!cancelled) {
+            setItem(data);
+            loadRelatedItems(data.category?._id ?? '', id);
+          }
+        } catch (error: any) {
+          if (!cancelled) {
+            showToast(error.message || 'Lỗi khi tải thông tin xe');
+            navigation.goBack();
+          }
         } finally {
-          if (!cancelled) { setLoading(false); }
+          if (!cancelled) {
+            setLoading(false);
+          }
         }
       })();
-      return () => { cancelled = true; };
+      return () => {
+        cancelled = true;
+      };
     }, [id, navigation]),
   );
 
@@ -86,17 +120,24 @@ const BicycleDetailScreen = ({ navigation, route }: any) => {
     );
   }
 
-  const images    = item.images.length > 0 ? item.images : null;
+  const images = item.images.length > 0 ? item.images : null;
   const primaryImg = item.images.find(i => i.isPrimary) ?? item.images[0];
-  const specs     = item.specifications;
+  const specs = item.specifications;
 
   const specChips = [
-    { key: 'condition', label: CONDITION_LABELS[item.condition] ?? item.condition },
-    specs?.yearManufactured ? { key: 'year',     label: `${specs.yearManufactured}` }  : null,
-    specs?.frameSize        ? { key: 'size',     label: specs.frameSize }              : null,
-    specs?.frameMaterial    ? { key: 'material', label: specs.frameMaterial }          : null,
-    specs?.color            ? { key: 'color',    label: specs.color }                  : null,
-    item.category           ? { key: 'category', label: item.category.name }           : null,
+    {
+      key: 'condition',
+      label: CONDITION_LABELS[item.condition] ?? item.condition,
+    },
+    specs?.yearManufactured
+      ? { key: 'year', label: `${specs.yearManufactured}` }
+      : null,
+    specs?.frameSize ? { key: 'size', label: specs.frameSize } : null,
+    specs?.frameMaterial
+      ? { key: 'material', label: specs.frameMaterial }
+      : null,
+    specs?.color ? { key: 'color', label: specs.color } : null,
+    item.category ? { key: 'category', label: item.category.name } : null,
   ].filter(Boolean) as { key: string; label: string }[];
 
   return (
@@ -126,7 +167,11 @@ const BicycleDetailScreen = ({ navigation, route }: any) => {
                   resizeMode="cover"
                 />
               )}
-              getItemLayout={(_, index) => ({ length: W, offset: W * index, index })}
+              getItemLayout={(_, index) => ({
+                length: W,
+                offset: W * index,
+                index,
+              })}
             />
           ) : (
             <View style={styles.galleryFallback}>
@@ -145,7 +190,9 @@ const BicycleDetailScreen = ({ navigation, route }: any) => {
           {/* Counter bottom-left */}
           {images && images.length > 1 && (
             <View style={styles.counter}>
-              <Text style={styles.counterText}>{imageIndex + 1} / {images.length}</Text>
+              <Text style={styles.counterText}>
+                {imageIndex + 1} / {images.length}
+              </Text>
             </View>
           )}
 
@@ -163,7 +210,10 @@ const BicycleDetailScreen = ({ navigation, route }: any) => {
           <View style={styles.sellerLeft}>
             <View style={styles.avatar}>
               {item.seller?.avatarUrl ? (
-                <Image source={{ uri: item.seller.avatarUrl }} style={styles.avatarImg} />
+                <Image
+                  source={{ uri: item.seller.avatarUrl }}
+                  style={styles.avatarImg}
+                />
               ) : (
                 <Icon name="person" size={24} color={colors.gray[400]} />
               )}
@@ -197,7 +247,9 @@ const BicycleDetailScreen = ({ navigation, route }: any) => {
           <View style={styles.priceRow}>
             <Text style={styles.priceText}>{formatPrice(item.price)}</Text>
             {item.originalPrice && item.originalPrice > item.price && (
-              <Text style={styles.msrpText}>{formatPrice(item.originalPrice)} MSRP</Text>
+              <Text style={styles.msrpText}>
+                {formatPrice(item.originalPrice)} MSRP
+              </Text>
             )}
           </View>
           {item.isInspected && (
@@ -213,7 +265,11 @@ const BicycleDetailScreen = ({ navigation, route }: any) => {
           <View style={styles.chipsWrap}>
             {specChips.map(chip => (
               <View key={chip.key} style={styles.specChip}>
-                <Icon name="information-circle-outline" size={14} color={colors.textSecondary} />
+                <Icon
+                  name="information-circle-outline"
+                  size={14}
+                  color={colors.textSecondary}
+                />
                 <Text style={styles.specChipText}>{chip.label}</Text>
               </View>
             ))}
@@ -244,9 +300,39 @@ const BicycleDetailScreen = ({ navigation, route }: any) => {
             Cập nhật lần cuối: {formatDate(item.updatedAt)}
           </Text>
           <TouchableOpacity style={styles.reportRow}>
-            <Icon name="information-circle-outline" size={15} color={colors.textSecondary} />
+            <Icon
+              name="information-circle-outline"
+              size={15}
+              color={colors.textSecondary}
+            />
             <Text style={styles.reportText}>Báo cáo sản phẩm</Text>
           </TouchableOpacity>
+        </View>
+
+        {/* ── Sản phẩm liên quan ── */}
+        <View style={styles.section}>
+          <SectionHeader
+            title="Sản phẩm tương tự"
+            onSeeAll={() => navigation.navigate('Main', { screen: 'Shop', params: { categoryId: item.category?._id, categoryName: item.category?.name } })}
+          />
+          {loadingRelateItems ? (
+            <ActivityIndicator
+              color={colors.primaryGreen}
+              style={styles.loader}
+            />
+          ) : !relatedItems || relatedItems.length === 0 ? (
+            <Text style={styles.emptyText}>Không có sản phẩm tương tự</Text>
+          ) : (
+            relatedItems.map(related => (
+              <BicycleListCard
+                key={related._id}
+                item={related}
+                onPress={() =>
+                  navigation.push('BicycleDetail', { id: related._id })
+                }
+              />
+            ))
+          )}
         </View>
 
         <View style={styles.scrollPadding} />
@@ -271,11 +357,17 @@ const BicycleDetailScreen = ({ navigation, route }: any) => {
               />
             )}
             <View style={styles.stickyTextBox}>
-              <Text style={styles.stickyTitle} numberOfLines={1}>{item.title}</Text>
+              <Text style={styles.stickyTitle} numberOfLines={1}>
+                {item.title}
+              </Text>
               <View style={styles.stickyPriceRow}>
-                <Text style={styles.stickyPrice}>{formatPrice(item.price)}</Text>
+                <Text style={styles.stickyPrice}>
+                  {formatPrice(item.price)}
+                </Text>
                 {item.originalPrice && item.originalPrice > item.price && (
-                  <Text style={styles.stickyMsrp}>{formatPrice(item.originalPrice)}</Text>
+                  <Text style={styles.stickyMsrp}>
+                    {formatPrice(item.originalPrice)}
+                  </Text>
                 )}
               </View>
             </View>
@@ -309,14 +401,16 @@ const BicycleDetailScreen = ({ navigation, route }: any) => {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.buyBtn}
-              onPress={() => navigation.navigate('Checkout', {
-                bicycleId:    item._id,
-                bicycleTitle: item.title,
-                bicyclePrice: item.price,
-                primaryImage: primaryImg?.url,
-                condition:    item.condition,
-                paymentType:  'FULL_100',
-              })}
+              onPress={() =>
+                navigation.navigate('Checkout', {
+                  bicycleId: item._id,
+                  bicycleTitle: item.title,
+                  bicyclePrice: item.price,
+                  primaryImage: primaryImg?.url,
+                  condition: item.condition,
+                  paymentType: 'FULL_100',
+                })
+              }
             >
               <Text style={styles.buyBtnText}>Mua ngay</Text>
             </TouchableOpacity>
@@ -357,19 +451,28 @@ const BicycleDetailScreen = ({ navigation, route }: any) => {
                 value={CONDITION_LABELS[item.condition] ?? item.condition}
               />
               {specs?.yearManufactured ? (
-                <DetailRow label="Năm sản xuất" value={`${specs.yearManufactured}`} />
+                <DetailRow
+                  label="Năm sản xuất"
+                  value={`${specs.yearManufactured}`}
+                />
               ) : null}
               {specs?.frameSize ? (
                 <DetailRow label="Kích cỡ khung" value={specs.frameSize} />
               ) : null}
               {specs?.frameMaterial ? (
-                <DetailRow label="Chất liệu khung" value={specs.frameMaterial} />
+                <DetailRow
+                  label="Chất liệu khung"
+                  value={specs.frameMaterial}
+                />
               ) : null}
               {specs?.color ? (
                 <DetailRow label="Màu sắc" value={specs.color} />
               ) : null}
               {item.usageMonths ? (
-                <DetailRow label="Thời gian sử dụng" value={`${item.usageMonths} tháng`} />
+                <DetailRow
+                  label="Thời gian sử dụng"
+                  value={`${item.usageMonths} tháng`}
+                />
               ) : null}
               {item.location?.city ? (
                 <DetailRow label="Khu vực" value={item.location.city} />
@@ -388,8 +491,13 @@ const BicycleDetailScreen = ({ navigation, route }: any) => {
 
 /* ─── Styles ─── */
 const styles = StyleSheet.create({
-  container:  { flex: 1, backgroundColor: colors.white },
-  loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.white },
+  container: { flex: 1, backgroundColor: colors.white },
+  loadingBox: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.white,
+  },
 
   galleryFallback: {
     flex: 1,
@@ -466,14 +574,39 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 8,
   },
-  stickyContent: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  stickyThumb:   { width: 46, height: 46, borderRadius: 6, backgroundColor: colors.gray[100] },
+  stickyContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  stickyThumb: {
+    width: 46,
+    height: 46,
+    borderRadius: 6,
+    backgroundColor: colors.gray[100],
+  },
   stickyTextBox: { flex: 1 },
-  stickyTitle:   { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
-  stickyPriceRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
-  stickyPrice:   { fontSize: 14, fontWeight: '700', color: colors.primaryGreen },
-  stickyMsrp:    { fontSize: 11, color: colors.textTertiary, textDecorationLine: 'line-through' },
-  stickyAction:  { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginLeft: 4 },
+  stickyTitle: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
+  stickyPriceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 2,
+  },
+  stickyPrice: { fontSize: 14, fontWeight: '700', color: colors.primaryGreen },
+  stickyMsrp: {
+    fontSize: 11,
+    color: colors.textTertiary,
+    textDecorationLine: 'line-through',
+  },
+  stickyAction: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 4,
+  },
 
   /* seller */
   sellerRow: {
@@ -493,10 +626,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  avatarImg:      { width: 48, height: 48 },
-  sellerInfo:     { flex: 1 },
-  sellerBy:       { fontSize: 11, color: colors.textSecondary },
-  sellerName:     { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
+  avatarImg: { width: 48, height: 48 },
+  sellerInfo: { flex: 1 },
+  sellerBy: { fontSize: 11, color: colors.textSecondary },
+  sellerName: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
   sellerLocation: { fontSize: 12, color: colors.textSecondary },
   askBtn: {
     paddingHorizontal: 18,
@@ -510,7 +643,12 @@ const styles = StyleSheet.create({
   divider: { height: 1, backgroundColor: colors.gray[100] },
 
   /* product info */
-  infoSection: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, gap: 6 },
+  infoSection: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
+    gap: 6,
+  },
   brandLabel: {
     fontSize: 13,
     color: colors.textSecondary,
@@ -518,11 +656,30 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0.5,
   },
-  titleText: { fontSize: 24, fontWeight: '800', color: colors.textPrimary, lineHeight: 30 },
-  priceRow:  { flexDirection: 'row', alignItems: 'baseline', gap: 10, marginTop: 4 },
+  titleText: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: colors.textPrimary,
+    lineHeight: 30,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 10,
+    marginTop: 4,
+  },
   priceText: { fontSize: 26, fontWeight: '800', color: colors.primaryGreen },
-  msrpText:  { fontSize: 14, color: colors.textTertiary, textDecorationLine: 'line-through' },
-  inspectedRow:   { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
+  msrpText: {
+    fontSize: 14,
+    color: colors.textTertiary,
+    textDecorationLine: 'line-through',
+  },
+  inspectedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 2,
+  },
   inspectedLabel: { fontSize: 13, color: colors.success, fontWeight: '500' },
 
   /* spec chips — wrap xuống dòng */
@@ -559,15 +716,20 @@ const styles = StyleSheet.create({
   specsBtnText: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
 
   /* mô tả */
-  descSection:  { paddingHorizontal: 16, paddingVertical: 16 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, marginBottom: 8 },
-  descText:     { fontSize: 14, color: colors.textSecondary, lineHeight: 22 },
+  descSection: { paddingHorizontal: 16, paddingVertical: 16 },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 8,
+  },
+  descText: { fontSize: 14, color: colors.textSecondary, lineHeight: 22 },
 
   /* meta */
   metaSection: { paddingHorizontal: 16, paddingBottom: 16, gap: 10 },
-  metaLine:    { fontSize: 12, color: colors.textTertiary },
-  reportRow:   { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  reportText:  { fontSize: 13, color: colors.textSecondary },
+  metaLine: { fontSize: 12, color: colors.textTertiary },
+  reportRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  reportText: { fontSize: 13, color: colors.textSecondary },
 
   /* bottom bar */
   bottomBar: {
@@ -588,7 +750,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  depositBtnText: { fontSize: 16, fontWeight: '600', color: colors.textPrimary },
+  depositBtnText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
   buyBtn: {
     flex: 1,
     paddingVertical: 13,
@@ -628,14 +794,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 16,
   },
-  specsHeaderLeft:  { flex: 1, marginRight: 12 },
+  specsHeaderLeft: { flex: 1, marginRight: 12 },
   specsHeaderBrand: {
     fontSize: 12,
     color: colors.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  specsHeaderTitle:   { fontSize: 18, fontWeight: '700', color: colors.textPrimary },
+  specsHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
   specsSectionTitle: {
     fontSize: 15,
     fontWeight: '700',
@@ -655,6 +825,44 @@ const styles = StyleSheet.create({
   detailValue: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
   specsModalPadding: { height: 24 },
   scrollPadding: { height: 100 },
+
+  /* related items */
+  section: {
+    marginTop: 20,
+    paddingHorizontal: 16,
+  },
+  loader: { marginVertical: 16 },
+  emptyText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    paddingVertical: 16,
+  },
+  relatedSection: { paddingTop: 16, paddingBottom: 8 },
+  relatedCard: {
+    width: 140,
+    marginLeft: 16,
+    borderRadius: 10,
+    backgroundColor: colors.white,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  relatedImage: {
+    width: '100%',
+    height: 100,
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
+    backgroundColor: colors.gray[100],
+  },
+  relatedTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    padding: 8,
+  },
 });
 
 export default BicycleDetailScreen;

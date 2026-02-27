@@ -16,7 +16,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { colors } from '../../theme';
 import { bicycleService } from '../../api/bicycleService';
+import { categoryService } from '../../api/categoryService';
 import type { BicycleListing, Brand, BicycleCondition } from '../../types/bicycle';
+import type { Category } from '../../types/category';
 import ViewToggle from '../../components/molecules/ViewToggle';
 import BicycleListCard from '../../components/molecules/BicycleListCard';
 import BicycleGridCard from '../../components/molecules/BicycleGridCard';
@@ -39,7 +41,7 @@ const CONDITION_OPTIONS: { value: BicycleCondition; label: string }[] = [
   { value: 'POOR',     label: 'Cũ' },
 ];
 
-type ActiveModal = null | 'sort' | 'condition' | 'brand' | 'price';
+type ActiveModal = null | 'sort' | 'condition' | 'brand' | 'category' | 'price';
 
 const ShopScreen = ({ navigation, route }: any) => {
   const [listings, setListings]   = useState<BicycleListing[]>([]);
@@ -61,6 +63,7 @@ const ShopScreen = ({ navigation, route }: any) => {
   // Modal state
   const [activeModal, setActiveModal] = useState<ActiveModal>(null);
   const [brands, setBrands]           = useState<Brand[]>([]);
+  const [categories, setCategories]   = useState<Category[]>([]);
   const [tempMin, setTempMin]         = useState('');
   const [tempMax, setTempMax]         = useState('');
 
@@ -117,6 +120,16 @@ const ShopScreen = ({ navigation, route }: any) => {
     }
   };
 
+  const openCategoryModal = async () => {
+    setActiveModal('category');
+    if (categories.length === 0) {
+      try {
+        const c = await categoryService.getActiveCategories();
+        setCategories(c);
+      } catch { /* ignore */ }
+    }
+  };
+
   const openPriceModal = () => {
     setTempMin(minPrice);
     setTempMax(maxPrice);
@@ -165,6 +178,7 @@ const ShopScreen = ({ navigation, route }: any) => {
         onClearCondition={() => setCondition(null)}
         onOpenBrand={openBrandModal}
         onClearBrand={() => setBrand(null)}
+        onOpenCategory={openCategoryModal}
         onClearCategory={() => setCategory(null)}
         onOpenPrice={openPriceModal}
         onClearPrice={() => { setMinPrice(''); setMaxPrice(''); }}
@@ -244,6 +258,48 @@ const ShopScreen = ({ navigation, route }: any) => {
               )}
             </TouchableOpacity>
           ))}
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+
+  /* ─── Modal: Category ─── */
+  const renderCategoryModal = () => (
+    <Modal
+      visible={activeModal === 'category'}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setActiveModal(null)}
+    >
+      <Pressable style={styles.overlay} onPress={() => setActiveModal(null)}>
+        <Pressable style={[styles.sheet, styles.sheetTall]}>
+          <View style={styles.handle} />
+          <Text style={styles.sheetTitle}>Danh mục</Text>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <TouchableOpacity
+              style={styles.sheetRow}
+              onPress={() => { setCategory(null); setActiveModal(null); }}
+            >
+              <Text style={[styles.sheetRowText, category === null && styles.sheetRowTextActive]}>
+                Tất cả danh mục
+              </Text>
+              {category === null && <Icon name="checkmark" size={18} color={colors.primaryGreen} />}
+            </TouchableOpacity>
+            {categories.map(c => (
+              <TouchableOpacity
+                key={c._id}
+                style={styles.sheetRow}
+                onPress={() => { setCategory({ _id: c._id, name: c.name }); setActiveModal(null); }}
+              >
+                <Text style={[styles.sheetRowText, category?._id === c._id && styles.sheetRowTextActive]}>
+                  {c.name}
+                </Text>
+                {category?._id === c._id && (
+                  <Icon name="checkmark" size={18} color={colors.primaryGreen} />
+                )}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </Pressable>
       </Pressable>
     </Modal>
@@ -397,6 +453,7 @@ const ShopScreen = ({ navigation, route }: any) => {
 
       {renderSortModal()}
       {renderConditionModal()}
+      {renderCategoryModal()}
       {renderBrandModal()}
       {renderPriceModal()}
     </SafeAreaView>
