@@ -75,7 +75,7 @@ const ProfileScreen = ({ navigation }: any) => {
     },
     {
       id: 'orders',
-      title: 'Đơn hàng',
+      title: 'Đơn mua của tôi',
       icon: 'receipt-outline',
       onPress: () => navigation.navigate('Orders'),
       showChevron: true,
