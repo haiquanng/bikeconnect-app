@@ -304,7 +304,14 @@ const BicycleDetailScreen = ({ navigation, route }: any) => {
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.buyBtn}
-          onPress={() => showToast('Đang phát triển')}
+          onPress={() => navigation.navigate('Checkout', {
+            bicycleId:    item._id,
+            bicycleTitle: item.title,
+            bicyclePrice: item.price,
+            primaryImage: primaryImg?.url,
+            condition:    item.condition,
+            paymentType:  'FULL_100',
+          })}
         >
           <Text style={styles.buyBtnText}>Mua ngay</Text>
         </TouchableOpacity>
