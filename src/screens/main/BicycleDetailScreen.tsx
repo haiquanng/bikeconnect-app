@@ -19,18 +19,13 @@ import { colors } from '../../theme';
 import { bicycleService } from '../../api/bicycleService';
 import type { BicycleListing } from '../../types/bicycle';
 import { showToast } from '../../utils/toast';
+import { useAppSelector } from '../../redux/hooks';
+import { formatPrice, formatDate } from '../../utils/helper';
 
 const CONDITION_LABELS: Record<string, string> = {
   NEW: 'Mới', LIKE_NEW: 'Như mới', GOOD: 'Tốt', FAIR: 'Khá', POOR: 'Cũ',
 };
 
-const formatPrice = (price: number) =>
-  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
-
-const formatDate = (dateStr: string) => {
-  const d = new Date(dateStr);
-  return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
-};
 
 const DetailRow = ({ label, value }: { label: string; value: string }) => (
   <View style={styles.detailRow}>
@@ -43,7 +38,8 @@ const BicycleDetailScreen = ({ navigation, route }: any) => {
   const { id } = route.params as { id: string };
   const { width: W } = useWindowDimensions();
   const GALLERY_H = W * 0.75; // 4:3 ratio — đổi tỉ lệ ở đây
-  const insets = useSafeAreaInsets();
+  const insets    = useSafeAreaInsets();
+  const currentUser = useAppSelector(state => state.auth.user);
 
   const [item, setItem]             = useState<BicycleListing | null>(null);
   const [loading, setLoading]       = useState(true);
@@ -296,25 +292,36 @@ const BicycleDetailScreen = ({ navigation, route }: any) => {
 
       {/* ── Bottom Bar ── */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom || 16 }]}>
-        <TouchableOpacity
-          style={styles.depositBtn}
-          onPress={() => showToast('Đang phát triển')}
-        >
-          <Text style={styles.depositBtnText}>Đặt cọc</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.buyBtn}
-          onPress={() => navigation.navigate('Checkout', {
-            bicycleId:    item._id,
-            bicycleTitle: item.title,
-            bicyclePrice: item.price,
-            primaryImage: primaryImg?.url,
-            condition:    item.condition,
-            paymentType:  'FULL_100',
-          })}
-        >
-          <Text style={styles.buyBtnText}>Mua ngay</Text>
-        </TouchableOpacity>
+        {currentUser?.id === item.seller?._id ? (
+          <TouchableOpacity
+            style={styles.buyBtn}
+            onPress={() => navigation.navigate('EditListing', { id: item._id })}
+          >
+            <Text style={styles.buyBtnText}>Chỉnh sửa tin đăng</Text>
+          </TouchableOpacity>
+        ) : (
+          <>
+            <TouchableOpacity
+              style={styles.depositBtn}
+              onPress={() => showToast('Đang phát triển')}
+            >
+              <Text style={styles.depositBtnText}>Đặt cọc</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.buyBtn}
+              onPress={() => navigation.navigate('Checkout', {
+                bicycleId:    item._id,
+                bicycleTitle: item.title,
+                bicyclePrice: item.price,
+                primaryImage: primaryImg?.url,
+                condition:    item.condition,
+                paymentType:  'FULL_100',
+              })}
+            >
+              <Text style={styles.buyBtnText}>Mua ngay</Text>
+            </TouchableOpacity>
+          </>
+        )}
       </View>
 
       {/* ── Modal: Tất cả thông số ── */}
