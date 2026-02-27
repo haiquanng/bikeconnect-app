@@ -33,6 +33,7 @@ interface Props {
   onClearCondition: () => void;
   onOpenBrand: () => void;
   onClearBrand: () => void;
+  onOpenCategory: () => void;
   onClearCategory: () => void;
   onOpenPrice: () => void;
   onClearPrice: () => void;
@@ -42,7 +43,7 @@ interface Props {
 const ShopFilterBar: React.FC<Props> = ({
   sort, condition, brandName, categoryName, minPrice, maxPrice,
   onOpenSort, onOpenCondition, onClearCondition,
-  onOpenBrand, onClearBrand, onClearCategory, onOpenPrice, onClearPrice, onClearAll,
+  onOpenBrand, onClearBrand, onOpenCategory, onClearCategory, onOpenPrice, onClearPrice, onClearAll,
 }) => {
   const sortActive  = sort !== '-createdAt';
   const priceActive = minPrice !== '' || maxPrice !== '';
@@ -58,21 +59,24 @@ const ShopFilterBar: React.FC<Props> = ({
       style={styles.row}
       contentContainerStyle={styles.content}
     >
-      {/* Category (from Home navigation) */}
-      {categoryName !== null && (
-        <TouchableOpacity style={[styles.chip, styles.chipActive]}>
-          <Icon name="apps-outline" size={15} color={colors.white} />
-          <Text style={[styles.chipText, styles.chipTextActive]} numberOfLines={1}>
-            {categoryName}
-          </Text>
+      {/* Category */}
+      <TouchableOpacity
+        style={[styles.chip, categoryName !== null && styles.chipActive]}
+        onPress={onOpenCategory}
+      >
+        <Icon name="apps-outline" size={15} color={categoryName ? colors.white : colors.textPrimary} />
+        <Text style={[styles.chipText, categoryName !== null && styles.chipTextActive]} numberOfLines={1}>
+          {categoryName ?? 'Danh mục'}
+        </Text>
+        {categoryName !== null && (
           <TouchableOpacity
             onPress={onClearCategory}
             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
           >
             <Icon name="close-circle" size={15} color={colors.white} />
           </TouchableOpacity>
-        </TouchableOpacity>
-      )}
+        )}
+      </TouchableOpacity>
 
       {/* Sort */}
       <TouchableOpacity
