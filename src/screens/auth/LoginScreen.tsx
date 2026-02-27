@@ -52,7 +52,7 @@ const LoginScreen = ({ navigation }: any) => {
 
     try {
       // Call API
-      const response = await authService.login({ email, password });
+      const response = await authService.login({ email: email.trim(), password });
 
       const basicUser = {
         id: response.data.id,
@@ -80,26 +80,27 @@ const LoginScreen = ({ navigation }: any) => {
         }),
       );
 
+      let isVerified = basicUser.isVerified;
+
       try {
         const fullProfile = await authService.getProfile();
-        //Thêm id từ login response
         const userToSave = { ...fullProfile, id: basicUser.id };
         dispatch(updateUser(userToSave));
         authStorage.save({ refreshToken: tokens.refreshToken, user: userToSave }).catch(() => {});
+        isVerified = fullProfile.isVerified ?? basicUser.isVerified;
       } catch (profileError) {
-        console.log(
-          'Failed to fetch full profile, using basic data:',
-          profileError,
-        );
-        // Persist basic user if profile fetch fails
+        console.log('Failed to fetch full profile, using basic data:', profileError);
         authStorage.save({ refreshToken: tokens.refreshToken, user: basicUser }).catch(() => {});
       }
 
-      // Dismiss keyboard and stop loading
       setLoading(false);
       Keyboard.dismiss();
 
-      // Show success modal after a brief delay to ensure keyboard is dismissed
+      if (!isVerified) {
+        navigation.replace('VerifyEmail', { email: email.trim() });
+        return;
+      }
+
       setTimeout(() => {
         setShowSuccess(true);
       }, 100);

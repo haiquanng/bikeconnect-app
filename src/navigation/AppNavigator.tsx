@@ -13,6 +13,7 @@ import ForgotPasswordEmailScreen from '../screens/auth/ForgotPasswordEmailScreen
 import ForgotPasswordOTPScreen from '../screens/auth/ForgotPasswordOTPScreen';
 import ForgotPasswordNewPasswordScreen from '../screens/auth/ForgotPasswordNewPasswordScreen';
 import ForgotPasswordSuccessScreen from '../screens/auth/ForgotPasswordSuccessScreen';
+import VerifyEmailScreen from '../screens/auth/VerifyEmailScreen';
 import ProfileEditScreen from '../screens/profile/ProfileEditScreen';
 import AddressListScreen from '../screens/profile/AddressListScreen';
 import AddAddressScreen from '../screens/profile/AddAddressScreen';
@@ -64,6 +65,7 @@ const AppNavigator = () => {
               name="ForgotPasswordSuccess"
               component={ForgotPasswordSuccessScreen}
             />
+            <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
             <Stack.Screen name="Main" component={BottomTabNavigator} />
             <Stack.Screen name="Search" component={SearchScreen} />
             <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
