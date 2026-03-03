@@ -196,8 +196,8 @@ const ListingsScreen = ({ navigation }: any) => {
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn} activeOpacity={0.7}>
-          <Icon name="arrow-back" size={22} color={colors.textPrimary} />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn1} activeOpacity={0.7}>
+          <Icon name="arrow-back" size={22} color={colors.white} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Sản phẩm đang bán</Text>
         <TouchableOpacity
@@ -286,9 +286,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: colors.white,
+    backgroundColor: colors.primaryGreen,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.gray[200],
+  },
+  headerBtn1: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primaryGreen,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerBtn: {
     width: 36,
@@ -301,9 +309,9 @@ const styles = StyleSheet.create({
   headerTitle: {
     flex: 1,
     textAlign: 'center',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
-    color: colors.textPrimary,
+    color: colors.white,
   },
   tabsRow: {
     backgroundColor: colors.white,
