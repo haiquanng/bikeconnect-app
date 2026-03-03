@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,12 +18,8 @@ import { SearchablePickerModal } from '../../components/ui';
 import { useAppDispatch } from '../../redux/hooks';
 import { updateUser } from '../../redux/auth/authSlice';
 import { addressService } from '../../api/addressService';
+import { shippingService, GHNProvince, GHNDistrict, GHNWard } from '../../api/shippingService';
 import { Address } from '../../types/user';
-import {
-  provinces,
-  getWardsByProvince,
-  findProvinceCodeByName,
-} from '../../data/helper/addressData';
 
 const AddAddressScreen = ({ navigation, route }: any) => {
   const dispatch = useAppDispatch();
@@ -32,35 +28,97 @@ const AddAddressScreen = ({ navigation, route }: any) => {
 
   const [label, setLabel] = useState(editAddress?.label || '');
   const [street, setStreet] = useState(editAddress?.street || '');
-  const [city, setCity] = useState(editAddress?.city || '');
-  const [cityCode, setCityCode] = useState(() =>
-    editAddress?.city ? findProvinceCodeByName(editAddress.city) : '',
-  );
-  const [ward, setWard] = useState(editAddress?.ward || '');
   const [isDefault, setIsDefault] = useState(editAddress?.isDefault || false);
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const [showCityPicker, setShowCityPicker] = useState(false);
-  const [showWardPicker, setShowWardPicker] = useState(false);
+  // GHN data
+  const [provinces, setProvinces] = useState<GHNProvince[]>([]);
+  const [districts, setDistricts] = useState<GHNDistrict[]>([]);
+  const [wards, setWards] = useState<GHNWard[]>([]);
 
-  const wardsList = useMemo(
-    () => (cityCode ? getWardsByProvince(cityCode) : []),
-    [cityCode],
+  // Loading states for each level
+  const [loadingProvinces, setLoadingProvinces] = useState(false);
+  const [loadingDistricts, setLoadingDistricts] = useState(false);
+  const [loadingWards, setLoadingWards] = useState(false);
+
+  // Selected values
+  const [selectedProvince, setSelectedProvince] = useState<GHNProvince | null>(
+    editAddress?.provinceId ? { ProvinceID: editAddress.provinceId, ProvinceName: editAddress.city || '' } : null,
+  );
+  const [selectedDistrict, setSelectedDistrict] = useState<GHNDistrict | null>(
+    editAddress?.districtId ? { DistrictID: editAddress.districtId, DistrictName: editAddress.district || '', ProvinceID: editAddress.provinceId || 0 } : null,
+  );
+  const [selectedWard, setSelectedWard] = useState<GHNWard | null>(
+    editAddress?.wardCode ? { WardCode: editAddress.wardCode, WardName: editAddress.ward || '', DistrictID: editAddress.districtId || 0 } : null,
   );
 
-  const handleCitySelect = (item: { label: string; value: string }) => {
-    const provinceName = item.label
-      .replace(/^Thành phố /, '')
-      .replace(/^Tỉnh /, '');
-    setCity(provinceName);
-    setCityCode(item.value);
-    setWard('');
-    setShowCityPicker(false);
+  // Picker visibility
+  const [showProvincePicker, setShowProvincePicker] = useState(false);
+  const [showDistrictPicker, setShowDistrictPicker] = useState(false);
+  const [showWardPicker, setShowWardPicker] = useState(false);
+
+  // Load provinces on mount
+  useEffect(() => {
+    setLoadingProvinces(true);
+    shippingService.getProvinces()
+      .then(data => setProvinces(data))
+      .catch(() => Alert.alert('Lỗi', 'Không thể tải danh sách tỉnh/thành'))
+      .finally(() => setLoadingProvinces(false));
+  }, []);
+
+  // Load districts when province selected
+  useEffect(() => {
+    if (!selectedProvince) {
+      setDistricts([]);
+      setSelectedDistrict(null);
+      setWards([]);
+      setSelectedWard(null);
+      return;
+    }
+    setLoadingDistricts(true);
+    shippingService.getDistricts(selectedProvince.ProvinceID)
+      .then(data => setDistricts(data))
+      .catch(() => Alert.alert('Lỗi', 'Không thể tải danh sách quận/huyện'))
+      .finally(() => setLoadingDistricts(false));
+  }, [selectedProvince]);
+
+  // Load wards when district selected
+  useEffect(() => {
+    if (!selectedDistrict) {
+      setWards([]);
+      setSelectedWard(null);
+      return;
+    }
+    setLoadingWards(true);
+    shippingService.getWards(selectedDistrict.DistrictID)
+      .then(data => setWards(data))
+      .catch(() => Alert.alert('Lỗi', 'Không thể tải danh sách phường/xã'))
+      .finally(() => setLoadingWards(false));
+  }, [selectedDistrict]);
+
+  const handleProvinceSelect = (item: { label: string; value: string | number }) => {
+    const province = provinces.find(p => p.ProvinceID === Number(item.value));
+    if (province) {
+      setSelectedProvince(province);
+      setSelectedDistrict(null);
+      setSelectedWard(null);
+    }
+    setShowProvincePicker(false);
   };
 
-  const handleWardSelect = (item: { label: string; value: string }) => {
-    setWard(item.label);
+  const handleDistrictSelect = (item: { label: string; value: string | number }) => {
+    const district = districts.find(d => d.DistrictID === Number(item.value));
+    if (district) {
+      setSelectedDistrict(district);
+      setSelectedWard(null);
+    }
+    setShowDistrictPicker(false);
+  };
+
+  const handleWardSelect = (item: { label: string; value: string | number }) => {
+    const ward = wards.find(w => w.WardCode === String(item.value));
+    if (ward) { setSelectedWard(ward); }
     setShowWardPicker(false);
   };
 
@@ -69,16 +127,31 @@ const AddAddressScreen = ({ navigation, route }: any) => {
       Alert.alert('Lỗi', 'Vui lòng nhập tên địa chỉ');
       return;
     }
+    if (!selectedProvince) {
+      Alert.alert('Lỗi', 'Vui lòng chọn Tỉnh/Thành phố');
+      return;
+    }
+    if (!selectedDistrict) {
+      Alert.alert('Lỗi', 'Vui lòng chọn Quận/Huyện');
+      return;
+    }
+    if (!selectedWard) {
+      Alert.alert('Lỗi', 'Vui lòng chọn Phường/Xã');
+      return;
+    }
 
     setLoading(true);
     Keyboard.dismiss();
 
-    const addressData = {
+    const addressData: Omit<Address, '_id'> = {
       label: label.trim(),
       street: street.trim(),
-      ward: ward.trim(),
-      district: 'a',
-      city: city.trim(),
+      city: selectedProvince.ProvinceName,
+      provinceId: selectedProvince.ProvinceID,
+      district: selectedDistrict.DistrictName,
+      districtId: selectedDistrict.DistrictID,
+      ward: selectedWard.WardName,
+      wardCode: selectedWard.WardCode,
       isDefault,
     };
 
@@ -86,10 +159,7 @@ const AddAddressScreen = ({ navigation, route }: any) => {
       let updatedAddresses: Address[];
 
       if (isEditMode && editAddress?._id) {
-        updatedAddresses = await addressService.updateAddress(
-          editAddress._id,
-          addressData,
-        );
+        updatedAddresses = await addressService.updateAddress(editAddress._id, addressData);
       } else {
         updatedAddresses = await addressService.addAddress(addressData);
       }
@@ -99,15 +169,8 @@ const AddAddressScreen = ({ navigation, route }: any) => {
       setTimeout(() => {
         Alert.alert(
           'Thành công',
-          isEditMode
-            ? 'Cập nhật địa chỉ thành công'
-            : 'Thêm địa chỉ thành công',
-          [
-            {
-              text: 'OK',
-              onPress: () => navigation.goBack(),
-            },
-          ],
+          isEditMode ? 'Cập nhật địa chỉ thành công' : 'Thêm địa chỉ thành công',
+          [{ text: 'OK', onPress: () => navigation.goBack() }],
         );
       }, 100);
     } catch (error: any) {
@@ -120,9 +183,7 @@ const AddAddressScreen = ({ navigation, route }: any) => {
   };
 
   const handleDelete = () => {
-    if (!editAddress?._id) {
-      return;
-    }
+    if (!editAddress?._id) { return; }
     Alert.alert(
       'Xoá địa chỉ',
       `Bạn có chắc chắn muốn xoá "${editAddress.label}"?`,
@@ -134,9 +195,7 @@ const AddAddressScreen = ({ navigation, route }: any) => {
           onPress: async () => {
             setDeleting(true);
             try {
-              const updatedAddresses = await addressService.deleteAddress(
-                editAddress._id!,
-              );
+              const updatedAddresses = await addressService.deleteAddress(editAddress._id!);
               dispatch(updateUser({ addresses: updatedAddresses }));
               navigation.goBack();
             } catch (error: any) {
@@ -150,19 +209,18 @@ const AddAddressScreen = ({ navigation, route }: any) => {
     );
   };
 
+  const provinceItems = provinces.map(p => ({ label: p.ProvinceName, value: String(p.ProvinceID) }));
+  const districtItems = districts.map(d => ({ label: d.DistrictName, value: String(d.DistrictID) }));
+  const wardItems = wards.map(w => ({ label: w.WardName, value: w.WardCode }));
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Icon name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {isEditMode ? 'Sửa địa chỉ' : 'Thêm địa chỉ'}
-        </Text>
+        <Text style={styles.headerTitle}>{isEditMode ? 'Sửa địa chỉ' : 'Thêm địa chỉ'}</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -173,9 +231,7 @@ const AddAddressScreen = ({ navigation, route }: any) => {
       >
         {/* Label */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>
-            Tên địa chỉ <Text style={styles.required}>*</Text>
-          </Text>
+          <Text style={styles.label}>Tên địa chỉ <Text style={styles.required}>*</Text></Text>
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.input}
@@ -187,50 +243,71 @@ const AddAddressScreen = ({ navigation, route }: any) => {
           </View>
         </View>
 
-        {/* City */}
+        {/* Province */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Thành phố/Tỉnh</Text>
+          <Text style={styles.label}>Tỉnh/Thành phố <Text style={styles.required}>*</Text></Text>
           <TouchableOpacity
             style={styles.inputContainer}
-            onPress={() => setShowCityPicker(true)}
+            onPress={() => !loadingProvinces && setShowProvincePicker(true)}
           >
-            <Text
-              style={[styles.pickerText, !city && styles.pickerPlaceholder]}
-            >
-              {city || 'Chọn Thành phố/Tỉnh'}
-            </Text>
-            <Icon
-              name="chevron-down-outline"
-              size={20}
-              color={colors.gray[400]}
-            />
+            {loadingProvinces ? (
+              <ActivityIndicator size="small" color={colors.primaryGreen} />
+            ) : (
+              <>
+                <Text style={[styles.pickerText, !selectedProvince && styles.pickerPlaceholder]}>
+                  {selectedProvince?.ProvinceName || 'Chọn Tỉnh/Thành phố'}
+                </Text>
+                <Icon name="chevron-down-outline" size={20} color={colors.gray[400]} />
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* District */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Quận/Huyện <Text style={styles.required}>*</Text></Text>
+          <TouchableOpacity
+            style={[styles.inputContainer, !selectedProvince && styles.inputDisabled]}
+            onPress={() => selectedProvince && !loadingDistricts && setShowDistrictPicker(true)}
+            disabled={!selectedProvince}
+          >
+            {loadingDistricts ? (
+              <ActivityIndicator size="small" color={colors.primaryGreen} />
+            ) : (
+              <>
+                <Text style={[styles.pickerText, !selectedDistrict && styles.pickerPlaceholder]}>
+                  {selectedDistrict?.DistrictName || (selectedProvince ? 'Chọn Quận/Huyện' : 'Chọn Tỉnh/Thành trước')}
+                </Text>
+                <Icon name="chevron-down-outline" size={20} color={colors.gray[400]} />
+              </>
+            )}
           </TouchableOpacity>
         </View>
 
         {/* Ward */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Phường/Xã</Text>
+          <Text style={styles.label}>Phường/Xã <Text style={styles.required}>*</Text></Text>
           <TouchableOpacity
-            style={[styles.inputContainer, !cityCode && styles.inputDisabled]}
-            onPress={() => cityCode && setShowWardPicker(true)}
-            disabled={!cityCode}
+            style={[styles.inputContainer, !selectedDistrict && styles.inputDisabled]}
+            onPress={() => selectedDistrict && !loadingWards && setShowWardPicker(true)}
+            disabled={!selectedDistrict}
           >
-            <Text
-              style={[styles.pickerText, !ward && styles.pickerPlaceholder]}
-            >
-              {ward || (cityCode ? 'Chọn Phường/Xã' : 'Chọn Thành phố trước')}
-            </Text>
-            <Icon
-              name="chevron-down-outline"
-              size={20}
-              color={colors.gray[400]}
-            />
+            {loadingWards ? (
+              <ActivityIndicator size="small" color={colors.primaryGreen} />
+            ) : (
+              <>
+                <Text style={[styles.pickerText, !selectedWard && styles.pickerPlaceholder]}>
+                  {selectedWard?.WardName || (selectedDistrict ? 'Chọn Phường/Xã' : 'Chọn Quận/Huyện trước')}
+                </Text>
+                <Icon name="chevron-down-outline" size={20} color={colors.gray[400]} />
+              </>
+            )}
           </TouchableOpacity>
         </View>
 
         {/* Street */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Đường</Text>
+          <Text style={styles.label}>Số nhà, tên đường</Text>
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.input}
@@ -243,16 +320,9 @@ const AddAddressScreen = ({ navigation, route }: any) => {
         </View>
 
         {/* Default Checkbox */}
-        <TouchableOpacity
-          style={styles.checkboxContainer}
-          onPress={() => setIsDefault(!isDefault)}
-        >
-          <View
-            style={[styles.checkbox, isDefault && styles.checkboxChecked]}
-          >
-            {isDefault && (
-              <Icon name="checkmark" size={16} color={colors.white} />
-            )}
+        <TouchableOpacity style={styles.checkboxContainer} onPress={() => setIsDefault(!isDefault)}>
+          <View style={[styles.checkbox, isDefault && styles.checkboxChecked]}>
+            {isDefault && <Icon name="checkmark" size={16} color={colors.white} />}
           </View>
           <Text style={styles.checkboxLabel}>Đặt làm địa chỉ mặc định</Text>
         </TouchableOpacity>
@@ -262,11 +332,7 @@ const AddAddressScreen = ({ navigation, route }: any) => {
       <View style={styles.bottomContainer}>
         {isEditMode ? (
           <View style={styles.bottomRow}>
-            <TouchableOpacity
-              style={styles.deleteButton}
-              onPress={handleDelete}
-              disabled={deleting}
-            >
+            <TouchableOpacity style={styles.deleteButton} onPress={handleDelete} disabled={deleting}>
               {deleting ? (
                 <ActivityIndicator size="small" color={colors.error} />
               ) : (
@@ -297,17 +363,25 @@ const AddAddressScreen = ({ navigation, route }: any) => {
 
       {/* Picker Modals */}
       <SearchablePickerModal
-        visible={showCityPicker}
-        title="Chọn Thành phố/Tỉnh"
-        data={provinces}
-        onSelect={handleCitySelect}
-        onClose={() => setShowCityPicker(false)}
-        placeholder="Tìm thành phố/tỉnh..."
+        visible={showProvincePicker}
+        title="Chọn Tỉnh/Thành phố"
+        data={provinceItems}
+        onSelect={handleProvinceSelect}
+        onClose={() => setShowProvincePicker(false)}
+        placeholder="Tìm tỉnh/thành phố..."
+      />
+      <SearchablePickerModal
+        visible={showDistrictPicker}
+        title="Chọn Quận/Huyện"
+        data={districtItems}
+        onSelect={handleDistrictSelect}
+        onClose={() => setShowDistrictPicker(false)}
+        placeholder="Tìm quận/huyện..."
       />
       <SearchablePickerModal
         visible={showWardPicker}
         title="Chọn Phường/Xã"
-        data={wardsList}
+        data={wardItems}
         onSelect={handleWardSelect}
         onClose={() => setShowWardPicker(false)}
         placeholder="Tìm phường/xã..."
@@ -418,10 +492,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.gray[100],
     shadowColor: colors.black,
-    shadowOffset: {
-      width: 0,
-      height: -2,
-    },
+    shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 5,

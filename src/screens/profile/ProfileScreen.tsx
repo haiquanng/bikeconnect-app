@@ -74,6 +74,13 @@ const ProfileScreen = ({ navigation }: any) => {
       showChevron: true,
     },
     {
+      id: 'wallet',
+      title: 'Ví của tôi',
+      icon: 'wallet-outline',
+      onPress: () => navigation.navigate('Wallet'),
+      showChevron: true,
+    },
+    {
       id: 'orders',
       title: 'Đơn mua của tôi',
       icon: 'receipt-outline',
