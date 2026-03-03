@@ -30,6 +30,7 @@ import CheckoutScreen from '../screens/checkout/CheckoutScreen';
 import OrderDetailScreen from '../screens/profile/OrderDetailScreen';
 import SellerOrdersScreen from '../screens/profile/SellerOrdersScreen';
 import SellerOrderDetailScreen from '../screens/profile/SellerOrderDetailScreen';
+import WalletScreen from '../screens/profile/WalletScreen';
 import CreateListingScreen from '../screens/sell/CreateListingScreen';
 import EditListingScreen from '../screens/sell/EditListingScreen';
 import Toast from 'react-native-toast-message';
@@ -89,6 +90,7 @@ const AppNavigator = () => {
             <Stack.Screen name="OrderDetail" component={OrderDetailScreen} />
             <Stack.Screen name="SellerOrders" component={SellerOrdersScreen} />
             <Stack.Screen name="SellerOrderDetail" component={SellerOrderDetailScreen} />
+            <Stack.Screen name="Wallet" component={WalletScreen} />
             <Stack.Screen name="EditListing" component={EditListingScreen} />
           </Stack.Navigator>
         </NavigationContainer>
