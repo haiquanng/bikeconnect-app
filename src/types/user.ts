@@ -6,8 +6,11 @@ export interface Address {
   label: string;
   street?: string;
   ward?: string;
+  wardCode?: string;
   district?: string;
+  districtId?: number;
   city?: string;
+  provinceId?: number;
   isDefault?: boolean;
 }
 
