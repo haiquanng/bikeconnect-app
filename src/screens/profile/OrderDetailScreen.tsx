@@ -14,6 +14,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors } from '../../theme';
 import { orderService } from '../../api/orderService';
+import { walletService } from '../../api/walletService';
 import type { Order, OrderStatus } from '../../types/order';
 
 /* ─── Helpers ─── */
@@ -96,6 +97,7 @@ const OrderDetailScreen = ({ navigation, route }: any) => {
   const [order, setOrder]     = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
+  const [paying, setPaying]   = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -140,6 +142,54 @@ const OrderDetailScreen = ({ navigation, route }: any) => {
     );
   };
 
+  const handlePay = async () => {
+    if (!order) { return; }
+    try {
+      // Check wallet balance first
+      const wallet = await walletService.getMyWallet();
+      const available = walletService.availableBalance(wallet);
+      const needed = order.status === 'RESERVED_DEPOSIT' ? order.amounts.deposit : order.amounts.total;
+
+      if (available < needed) {
+        const shortage = needed - available;
+        Alert.alert(
+          'Số dư không đủ',
+          `Cần thêm ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(shortage)}.`,
+          [
+            { text: 'Nạp tiền', onPress: () => navigation.navigate('Wallet') },
+            { text: 'Huỷ', style: 'cancel' },
+          ],
+        );
+        return;
+      }
+
+      Alert.alert(
+        'Xác nhận thanh toán',
+        `Thanh toán ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(needed)} từ ví?`,
+        [
+          { text: 'Huỷ', style: 'cancel' },
+          {
+            text: 'Thanh toán',
+            onPress: async () => {
+              try {
+                setPaying(true);
+                const updated = await orderService.payOrder(order._id);
+                setOrder(updated);
+                Alert.alert('Thành công', 'Thanh toán thành công!');
+              } catch (e: any) {
+                Alert.alert('Lỗi', e?.response?.data?.message ?? 'Không thể thanh toán');
+              } finally {
+                setPaying(false);
+              }
+            },
+          },
+        ],
+      );
+    } catch {
+      Alert.alert('Lỗi', 'Không thể kiểm tra số dư ví');
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingBox}>
@@ -152,6 +202,7 @@ const OrderDetailScreen = ({ navigation, route }: any) => {
 
   const statusColor = STATUS_COLOR[order.status] ?? colors.textSecondary;
   const canCancel   = CANCELLABLE.includes(order.status);
+  const canPay      = ['RESERVED_FULL', 'RESERVED_DEPOSIT', 'WAITING_REMAINING_PAYMENT'].includes(order.status);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -251,19 +302,33 @@ const OrderDetailScreen = ({ navigation, route }: any) => {
         </SectionCard>
       </ScrollView>
 
-      {/* Buyer: cancel */}
-      {canCancel && (
+      {/* Buyer action bar */}
+      {(canPay || canCancel) && (
         <View style={styles.bottomBar}>
-          <TouchableOpacity
-            style={[styles.cancelBtn, cancelling && styles.btnDisabled]}
-            onPress={handleCancel}
-            disabled={cancelling}
-          >
-            {cancelling
-              ? <ActivityIndicator color={colors.error} />
-              : <Text style={styles.cancelBtnText}>Huỷ đơn hàng</Text>
-            }
-          </TouchableOpacity>
+          {canCancel && (
+            <TouchableOpacity
+              style={[styles.cancelBtn, cancelling && styles.btnDisabled]}
+              onPress={handleCancel}
+              disabled={cancelling || paying}
+            >
+              {cancelling
+                ? <ActivityIndicator color={colors.error} />
+                : <Text style={styles.cancelBtnText}>Huỷ đơn</Text>
+              }
+            </TouchableOpacity>
+          )}
+          {canPay && (
+            <TouchableOpacity
+              style={[styles.payBtn, paying && styles.btnDisabled]}
+              onPress={handlePay}
+              disabled={paying || cancelling}
+            >
+              {paying
+                ? <ActivityIndicator color={colors.white} />
+                : <Text style={styles.payBtnText}>Thanh toán từ ví</Text>
+              }
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
@@ -352,6 +417,8 @@ const styles = StyleSheet.create({
   divider:   { height: 1, backgroundColor: colors.gray[100], marginVertical: 4 },
 
   bottomBar: {
+    flexDirection: 'row',
+    gap: 10,
     paddingHorizontal: 16,
     paddingVertical: 14,
     paddingBottom: 28,
@@ -369,6 +436,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cancelBtnText: { fontSize: 15, fontWeight: '700', color: colors.error },
+  payBtn: {
+    flex: 2,
+    height: 50,
+    borderRadius: 12,
+    backgroundColor: colors.primaryGreen,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  payBtnText: { fontSize: 15, fontWeight: '700', color: colors.white },
   btnDisabled: { opacity: 0.5 },
 });
 

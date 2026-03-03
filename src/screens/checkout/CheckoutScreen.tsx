@@ -13,6 +13,7 @@ import { colors } from '../../theme';
 import { useAppSelector } from '../../redux/hooks';
 import type { Address } from '../../types/user';
 import { orderService } from '../../api/orderService';
+import { walletService } from '../../api/walletService';
 import { showToast } from '../../utils/toast';
 import StepIndicator from './components/StepIndicator';
 import AddressStep from './steps/AddressStep';
@@ -54,23 +55,54 @@ const CheckoutScreen = ({ navigation, route }: any) => {
 
   const handleConfirm = async () => {
     if (!selectedAddress || !selectedAddress._id) { return; }
+
+    // Validate address has GHN IDs required by backend
+    if (!selectedAddress.districtId || !selectedAddress.wardCode) {
+      Alert.alert(
+        'Địa chỉ chưa hợp lệ',
+        'Vui lòng cập nhật địa chỉ giao hàng (chọn lại Quận/Huyện và Phường/Xã) để tiếp tục.',
+        [{ text: 'Cập nhật', onPress: () => navigation.navigate('AddAddress', { address: selectedAddress }) }, { text: 'Huỷ', style: 'cancel' }],
+      );
+      return;
+    }
+
     try {
       setLoading(true);
-      // Tạo đơn hàng trước — bicycle chuyển sang RESERVED, order status = RESERVED_FULL
-      await orderService.createOrder({
+      // Bước 1: Tạo đơn → bicycle chuyển RESERVED, order = RESERVED_FULL
+      const order = await orderService.createOrder({
         bicycleId:         params.bicycleId,
         paymentType:       'FULL_100',
         shippingAddressId: selectedAddress._id,
       });
-      // Đơn đã tạo; cổng thanh toán chưa tích hợp
-      showToast('Đặt hàng thành công! Chưa hỗ trợ thanh toán online');
-      navigation.reset({
-        index: 1,
-        routes: [
-          { name: 'Main', params: { screen: 'Shop' } },
-          { name: 'Orders' },
-        ],
-      });
+
+      // Bước 2: Kiểm tra ví có đủ không
+      let wallet;
+      try { wallet = await walletService.getMyWallet(); } catch { wallet = null; }
+
+      const total = order.amounts?.total ?? params.bicyclePrice;
+      const available = wallet ? walletService.availableBalance(wallet) : 0;
+
+      if (available >= total) {
+        // Đủ tiền → thanh toán luôn
+        await orderService.payOrder(order._id);
+        showToast('Đặt hàng và thanh toán thành công!');
+        navigation.reset({
+          index: 1,
+          routes: [{ name: 'Main', params: { screen: 'Shop' } }, { name: 'Orders' }],
+        });
+      } else {
+        // Không đủ tiền → ra màn Orders, nhắc nạp tiền
+        const shortage = total - available;
+        showToast('Đặt hàng thành công! Vui lòng nạp tiền để hoàn tất thanh toán.');
+        Alert.alert(
+          'Số dư không đủ',
+          `Cần thêm ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(shortage)} để thanh toán đơn hàng này.`,
+          [
+            { text: 'Nạp tiền ngay', onPress: () => navigation.reset({ index: 1, routes: [{ name: 'Main', params: { screen: 'Shop' } }, { name: 'Orders' }, { name: 'Wallet' }] }) },
+            { text: 'Để sau', onPress: () => navigation.reset({ index: 1, routes: [{ name: 'Main', params: { screen: 'Shop' } }, { name: 'Orders' }] }) },
+          ],
+        );
+      }
     } catch (e: any) {
       Alert.alert('Lỗi', e?.response?.data?.message ?? 'Không thể tạo đơn hàng');
     } finally {
