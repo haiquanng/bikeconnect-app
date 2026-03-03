@@ -1,14 +1,16 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
+  ScrollView,
   FlatList,
   TouchableOpacity,
   Image,
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import PagerView from 'react-native-pager-view';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -51,12 +53,16 @@ const ListingsScreen = ({ navigation }: any) => {
   const [listings, setListings] = useState<BicycleListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeStatus, setActiveStatus] = useState<BicycleStatus | undefined>(undefined);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  const pagerRef = useRef<PagerView>(null);
+  const tabsScrollRef = useRef<ScrollView>(null);
+  const tabPositions = useRef<number[]>([]);
 
   const loadListings = useCallback(async (refresh = false) => {
     try {
-      if (refresh) {setRefreshing(true);}
-      else {setLoading(true);}
+      if (refresh) { setRefreshing(true); }
+      else { setLoading(true); }
       const res = await bicycleService.getMyListings({
         sort: '-createdAt',
         limit: 50,
@@ -77,6 +83,23 @@ const ListingsScreen = ({ navigation }: any) => {
     }, []),
   );
 
+  const handleTabPress = (index: number) => {
+    setActiveIndex(index);
+    pagerRef.current?.setPage(index);
+    scrollTabIntoView(index);
+  };
+
+  const handlePageSelected = (e: any) => {
+    const index = e.nativeEvent.position;
+    setActiveIndex(index);
+    scrollTabIntoView(index);
+  };
+
+  const scrollTabIntoView = (index: number) => {
+    const x = tabPositions.current[index] ?? 0;
+    tabsScrollRef.current?.scrollTo({ x: Math.max(0, x - 60), animated: true });
+  };
+
   const renderCard = ({ item }: { item: BicycleListing }) => {
     const status = STATUS_CONFIG[item.status];
     const primaryImage = item.images.find(img => img.isPrimary) ?? item.images[0];
@@ -89,7 +112,6 @@ const ListingsScreen = ({ navigation }: any) => {
         onPress={() => navigation.navigate('BicycleDetail', { id: item._id })}
         activeOpacity={0.85}
       >
-        {/* Image */}
         <View style={styles.cardImageBox}>
           {primaryImage ? (
             <Image source={{ uri: primaryImage.url }} style={styles.cardImage} resizeMode="cover" />
@@ -100,7 +122,6 @@ const ListingsScreen = ({ navigation }: any) => {
           )}
         </View>
 
-        {/* Info */}
         <View style={styles.cardBody}>
           <View style={styles.cardTopRow}>
             <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
@@ -152,14 +173,14 @@ const ListingsScreen = ({ navigation }: any) => {
     );
   };
 
-  const renderEmpty = () => (
+  const renderEmpty = (tabValue: BicycleStatus | undefined) => (
     <View style={styles.emptyContainer}>
       <Icon name="bicycle-outline" size={64} color={colors.gray[300]} />
       <Text style={styles.emptyTitle}>Chưa có tin đăng</Text>
       <Text style={styles.emptySubtitle}>
-        {activeStatus ? 'Không có tin ở trạng thái này' : 'Bắt đầu đăng xe để bán nhanh hơn'}
+        {tabValue ? 'Không có tin ở trạng thái này' : 'Bắt đầu đăng xe để bán nhanh hơn'}
       </Text>
-      {!activeStatus && (
+      {!tabValue && (
         <TouchableOpacity
           style={styles.emptyBtn}
           onPress={() => navigation.navigate('CreateListing')}
@@ -188,27 +209,32 @@ const ListingsScreen = ({ navigation }: any) => {
         </TouchableOpacity>
       </View>
 
-      {/* Status filter tabs */}
-      <FlatList
+      {/* Tab bar */}
+      <ScrollView
+        ref={tabsScrollRef}
         horizontal
-        data={STATUS_TABS}
-        keyExtractor={item => item.label}
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.tabsContent}
         style={styles.tabsRow}
-        renderItem={({ item: tab }) => {
-          const isActive = tab.value === activeStatus;
+        contentContainerStyle={styles.tabsContent}
+      >
+        {STATUS_TABS.map((tab, index) => {
+          const isActive = index === activeIndex;
           return (
             <TouchableOpacity
-              style={[styles.tab, isActive && styles.tabActive]}
-              onPress={() => setActiveStatus(tab.value)}
+              key={tab.label}
+              style={styles.tab}
+              onPress={() => handleTabPress(index)}
               activeOpacity={0.7}
+              onLayout={e => { tabPositions.current[index] = e.nativeEvent.layout.x; }}
             >
-              <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{tab.label}</Text>
+              <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+                {tab.label}
+              </Text>
+              {isActive && <View style={styles.tabUnderline} />}
             </TouchableOpacity>
           );
-        }}
-      />
+        })}
+      </ScrollView>
 
       {/* Content */}
       {loading ? (
@@ -216,21 +242,35 @@ const ListingsScreen = ({ navigation }: any) => {
           <ActivityIndicator size="large" color={colors.primaryGreen} />
         </View>
       ) : (
-        <FlatList
-          data={activeStatus ? listings.filter(l => l.status === activeStatus) : listings}
-          keyExtractor={item => item._id}
-          renderItem={renderCard}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={renderEmpty}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => loadListings(true)}
-              tintColor={colors.primaryGreen}
-            />
-          }
-        />
+        <PagerView
+          ref={pagerRef}
+          style={styles.pager}
+          initialPage={0}
+          onPageSelected={handlePageSelected}
+        >
+          {STATUS_TABS.map((tab, index) => {
+            const data = tab.value ? listings.filter(l => l.status === tab.value) : listings;
+            return (
+              <View key={index} style={styles.page}>
+                <FlatList
+                  data={data}
+                  keyExtractor={item => item._id}
+                  renderItem={renderCard}
+                  contentContainerStyle={styles.listContent}
+                  showsVerticalScrollIndicator={false}
+                  ListEmptyComponent={() => renderEmpty(tab.value)}
+                  refreshControl={
+                    <RefreshControl
+                      refreshing={refreshing}
+                      onRefresh={() => loadListings(true)}
+                      tintColor={colors.primaryGreen}
+                    />
+                  }
+                />
+              </View>
+            );
+          })}
+        </PagerView>
       )}
     </SafeAreaView>
   );
@@ -272,34 +312,44 @@ const styles = StyleSheet.create({
     flexGrow: 0,
   },
   tabsContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 8,
+    paddingHorizontal: 8,
+    flexDirection: 'row',
+    alignItems: 'stretch',
   },
   tab: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.gray[300],
-    backgroundColor: colors.white,
-  },
-  tabActive: {
-    backgroundColor: colors.primaryGreen,
-    borderColor: colors.primaryGreen,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   tabText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '500',
     color: colors.textSecondary,
   },
   tabTextActive: {
-    color: colors.white,
+    color: colors.primaryGreen,
+    fontWeight: '700',
+  },
+  tabUnderline: {
+    position: 'absolute',
+    bottom: 0,
+    left: 10,
+    right: 10,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: colors.primaryGreen,
   },
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  pager: {
+    flex: 1,
+  },
+  page: {
+    flex: 1,
   },
   listContent: {
     padding: 16,
