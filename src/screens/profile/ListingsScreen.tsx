@@ -3,6 +3,7 @@ import {
   View,
   Text,
   StyleSheet,
+  ScrollView,
   FlatList,
   TouchableOpacity,
   Image,
@@ -189,26 +190,29 @@ const ListingsScreen = ({ navigation }: any) => {
       </View>
 
       {/* Status filter tabs */}
-      <FlatList
+      <ScrollView
         horizontal
-        data={STATUS_TABS}
-        keyExtractor={item => item.label}
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.tabsContent}
         style={styles.tabsRow}
-        renderItem={({ item: tab }) => {
+        contentContainerStyle={styles.tabsContent}
+      >
+        {STATUS_TABS.map(tab => {
           const isActive = tab.value === activeStatus;
           return (
             <TouchableOpacity
-              style={[styles.tab, isActive && styles.tabActive]}
+              key={tab.label}
+              style={styles.tab}
               onPress={() => setActiveStatus(tab.value)}
               activeOpacity={0.7}
             >
-              <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{tab.label}</Text>
+              <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+                {tab.label}
+              </Text>
+              {isActive && <View style={styles.tabUnderline} />}
             </TouchableOpacity>
           );
-        }}
-      />
+        })}
+      </ScrollView>
 
       {/* Content */}
       {loading ? (
@@ -217,6 +221,7 @@ const ListingsScreen = ({ navigation }: any) => {
         </View>
       ) : (
         <FlatList
+          style={styles.list}
           data={activeStatus ? listings.filter(l => l.status === activeStatus) : listings}
           keyExtractor={item => item._id}
           renderItem={renderCard}
@@ -272,29 +277,36 @@ const styles = StyleSheet.create({
     flexGrow: 0,
   },
   tabsContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 8,
+    paddingHorizontal: 8,
+    flexDirection: 'row',
+    alignItems: 'stretch',
   },
   tab: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.gray[300],
-    backgroundColor: colors.white,
-  },
-  tabActive: {
-    backgroundColor: colors.primaryGreen,
-    borderColor: colors.primaryGreen,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   tabText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '500',
     color: colors.textSecondary,
   },
   tabTextActive: {
-    color: colors.white,
+    color: colors.primaryGreen,
+    fontWeight: '700',
+  },
+  tabUnderline: {
+    position: 'absolute',
+    bottom: 0,
+    left: 10,
+    right: 10,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: colors.primaryGreen,
+  },
+  list: {
+    flex: 1,
   },
   loadingContainer: {
     flex: 1,
