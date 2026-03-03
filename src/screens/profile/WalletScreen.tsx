@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
@@ -39,11 +40,23 @@ const TXN_LABEL: Record<string, string> = {
 
 const DEPOSIT_PRESETS = [50_000, 100_000, 200_000, 500_000, 1_000_000];
 
+const CARD_IMAGES = [
+  require('../../assets/images/card/card_1.png'),
+  require('../../assets/images/card/card_2.png'),
+  require('../../assets/images/card/card_3.png'),
+  require('../../assets/images/card/card_4.png'),
+  require('../../assets/images/card/card_5.png'),
+  require('../../assets/images/card/card_6.png'),
+];
+
 const WalletScreen = ({ navigation }: any) => {
+  const cardImage = useMemo(
+    () => CARD_IMAGES[Math.floor(Math.random() * CARD_IMAGES.length)],
+    [],
+  );
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
 
   // Deposit modal
   const [showDeposit, setShowDeposit] = useState(false);
@@ -67,7 +80,6 @@ const WalletScreen = ({ navigation }: any) => {
       // ignore
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   }, []);
 
@@ -130,15 +142,18 @@ const WalletScreen = ({ navigation }: any) => {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Balance card */}
         <View style={styles.balanceCard}>
-          <Text style={styles.balanceLabel}>Số dư khả dụng</Text>
-          <Text style={styles.balanceAmount}>{formatVND(availableBalance)}</Text>
-          {wallet && wallet.frozenBalance > 0 && (
-            <Text style={styles.frozenText}>Đang giữ: {formatVND(wallet.frozenBalance)}</Text>
-          )}
-          <TouchableOpacity style={styles.depositBtn} onPress={() => setShowDeposit(true)}>
-            <Icon name="add-circle-outline" size={18} color={colors.white} />
-            <Text style={styles.depositBtnText}>Nạp tiền</Text>
-          </TouchableOpacity>
+          <Image source={cardImage} style={styles.balanceCardImg} resizeMode="stretch" />
+          <View style={styles.balanceCardContent}>
+            <Text style={styles.balanceLabel}>Số dư khả dụng</Text>
+            <Text style={styles.balanceAmount}>{formatVND(availableBalance)}</Text>
+            {wallet && wallet.frozenBalance > 0 && (
+              <Text style={styles.frozenText}>Đang giữ: {formatVND(wallet.frozenBalance)}</Text>
+            )}
+            <TouchableOpacity style={styles.depositBtn} onPress={() => setShowDeposit(true)}>
+              <Icon name="add-circle-outline" size={18} color={colors.white} />
+              <Text style={styles.depositBtnText}>Nạp tiền</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Transactions */}
@@ -217,13 +232,13 @@ const WalletScreen = ({ navigation }: any) => {
 
       {/* VNPay WebView Modal */}
       <Modal visible={!!paymentUrl} animationType="slide" onRequestClose={() => setPaymentUrl(null)}>
-        <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+        <SafeAreaView style={styles.webViewSafeArea} edges={['top']}>
           <View style={styles.webViewHeader}>
             <TouchableOpacity onPress={() => setPaymentUrl(null)} style={styles.webViewClose}>
               <Icon name="close" size={22} color={colors.textPrimary} />
             </TouchableOpacity>
             <Text style={styles.webViewTitle}>Thanh toán VNPay</Text>
-            <View style={{ width: 36 }} />
+            <View style={styles.webViewSpacer} />
           </View>
           {paymentUrl && (
             <WebView
@@ -247,7 +262,7 @@ const WalletScreen = ({ navigation }: any) => {
 const Header = ({ navigation }: any) => (
   <View style={styles.header}>
     <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-      <Icon name="arrow-back" size={22} color={colors.textPrimary} />
+      <Icon name="arrow-back" size={22} color={colors.white} />
     </TouchableOpacity>
     <Text style={styles.headerTitle}>Ví của tôi</Text>
     <View style={styles.headerBtn} />
@@ -275,15 +290,17 @@ const TxnRow = ({ txn }: { txn: WalletTransaction }) => {
         />
       </View>
       <View style={styles.txnInfo}>
-        <Text style={[styles.txnLabel, isFailed && { color: colors.textSecondary }]}>
+        <Text style={[styles.txnLabel, isFailed && styles.txnLabelFailed]}>
           {TXN_LABEL[txn.type] ?? txn.type}
         </Text>
         <Text style={styles.txnDate}>{formatDate(txn.createdAt)}</Text>
         {statusCfg && (
-          <Text style={[styles.txnStatus, { color: statusCfg.color }]}>{statusCfg.label}</Text>
+          <Text style={[styles.txnStatus, statusCfg.color === '#D97706' ? styles.txnStatusPending : statusCfg.color === '#065F46' ? styles.txnStatusSuccess : styles.txnStatusFailed]}>
+            {statusCfg.label}
+          </Text>
         )}
       </View>
-      <Text style={[styles.txnAmount, { color: isFailed ? colors.textSecondary : isIn ? '#065F46' : '#991B1B' }]}>
+      <Text style={[styles.txnAmount, isFailed ? styles.txnAmountFailed : isIn ? styles.txnAmountIn : styles.txnAmountOut]}>
         {isFailed ? '' : isIn ? '+' : '-'}{formatVND(txn.amount)}
       </Text>
     </View>
@@ -295,16 +312,27 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 12,
-    backgroundColor: colors.white,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.gray[200],
+    paddingHorizontal: 16, paddingVertical: 14,
+    backgroundColor: colors.primaryGreen,
   },
-  headerBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.gray[100], alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { flex: 1, textAlign: 'center', fontSize: 16, fontWeight: '700', color: colors.textPrimary },
+  headerBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { flex: 1, textAlign: 'center', fontSize: 18, fontWeight: '700', color: colors.white },
 
   balanceCard: {
-    margin: 16, borderRadius: 20, backgroundColor: colors.primaryGreen,
-    padding: 24, alignItems: 'center', gap: 8,
+    marginHorizontal: 16,
+    marginVertical: 16,
+  },
+  balanceCardImg: {
+    width: '100%',
+    height: 190,
+    borderRadius: 16,
+  },
+  balanceCardContent: {
+    position: 'absolute',
+    bottom: 0, left: 0, right: 0,
+    padding: 24,
+    alignItems: 'center',
+    gap: 8,
   },
   balanceLabel: { fontSize: 14, color: 'rgba(255,255,255,0.8)', fontWeight: '500' },
   balanceAmount: { fontSize: 32, fontWeight: '800', color: colors.white },
@@ -333,8 +361,15 @@ const styles = StyleSheet.create({
   txnDate: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
   txnPending: { fontSize: 11, color: colors.warning, marginTop: 2, fontWeight: '500' },
   txnStatus: { fontSize: 11, marginTop: 2, fontWeight: '500' },
+  txnStatusPending: { fontSize: 11, marginTop: 2, fontWeight: '500', color: '#D97706' },
+  txnStatusSuccess: { fontSize: 11, marginTop: 2, fontWeight: '500', color: '#065F46' },
+  txnStatusFailed:  { fontSize: 11, marginTop: 2, fontWeight: '500', color: '#DC2626' },
   txnRowFailed: { opacity: 0.7 },
+  txnLabelFailed: { color: colors.textSecondary },
   txnAmount: { fontSize: 14, fontWeight: '700' },
+  txnAmountIn:     { fontSize: 14, fontWeight: '700', color: '#065F46' },
+  txnAmountOut:    { fontSize: 14, fontWeight: '700', color: '#991B1B' },
+  txnAmountFailed: { fontSize: 14, fontWeight: '700', color: colors.textSecondary },
 
   // Deposit modal
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
@@ -374,7 +409,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 12,
     backgroundColor: colors.white, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.gray[200],
   },
+  webViewSafeArea: { flex: 1 },
   webViewClose: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.gray[100], alignItems: 'center', justifyContent: 'center' },
+  webViewSpacer: { width: 36 },
   webViewTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary },
 });
 
