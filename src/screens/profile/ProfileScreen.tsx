@@ -95,13 +95,6 @@ const ProfileScreen = ({ navigation }: any) => {
       showChevron: true,
     },
     {
-      id: 'sales',
-      title: 'Đã bán',
-      icon: 'checkmark-circle-outline',
-      onPress: () => navigation.navigate('Sales'),
-      showChevron: true,
-    },
-    {
       id: 'notifications',
       title: 'Thông báo',
       icon: 'notifications-outline',

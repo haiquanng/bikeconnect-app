@@ -20,7 +20,6 @@ import AddAddressScreen from '../screens/profile/AddAddressScreen';
 import ChangePasswordScreen from '../screens/profile/ChangePasswordScreen';
 import OrdersScreen from '../screens/profile/OrdersScreen';
 import ListingsScreen from '../screens/profile/ListingsScreen';
-import SalesScreen from '../screens/profile/SalesScreen';
 import NotificationsScreen from '../screens/profile/NotificationsScreen';
 import HelpScreen from '../screens/profile/HelpScreen';
 import SearchScreen from '../screens/main/SearchScreen';
@@ -80,7 +79,6 @@ const AppNavigator = () => {
             />
             <Stack.Screen name="Orders" component={OrdersScreen} />
             <Stack.Screen name="Listings" component={ListingsScreen} />
-            <Stack.Screen name="Sales" component={SalesScreen} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
             <Stack.Screen name="Help" component={HelpScreen} />
             <Stack.Screen name="ChatDetail" component={ChatDetailScreen} />
