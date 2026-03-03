@@ -11,101 +11,149 @@ import {
   ScrollView,
   TextInput,
   Pressable,
+  DeviceEventEmitter,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { colors } from '../../theme';
 import { bicycleService } from '../../api/bicycleService';
 import { categoryService } from '../../api/categoryService';
-import type { BicycleListing, Brand, BicycleCondition } from '../../types/bicycle';
+import type {
+  BicycleListing,
+  Brand,
+  BicycleCondition,
+} from '../../types/bicycle';
 import type { Category } from '../../types/category';
 import ViewToggle from '../../components/molecules/ViewToggle';
 import BicycleListCard from '../../components/molecules/BicycleListCard';
 import BicycleGridCard from '../../components/molecules/BicycleGridCard';
 import ShopFilterBar from '../../components/molecules/ShopFilterBar';
+import { SCROLL_TO_TOP_EVENT } from '../../components/organisms/CustomTabBar';
 
 type ViewMode = 'list' | 'grid';
 
 const SORT_OPTIONS = [
   { value: '-createdAt', label: 'Mới nhất' },
-  { value: 'price',      label: 'Giá tăng dần' },
-  { value: '-price',     label: 'Giá giảm dần' },
+  { value: 'price', label: 'Giá tăng dần' },
+  { value: '-price', label: 'Giá giảm dần' },
   { value: '-viewCount', label: 'Xem nhiều nhất' },
 ];
 
 const CONDITION_OPTIONS: { value: BicycleCondition; label: string }[] = [
-  { value: 'NEW',      label: 'Mới' },
+  { value: 'NEW', label: 'Mới' },
   { value: 'LIKE_NEW', label: 'Như mới' },
-  { value: 'GOOD',     label: 'Tốt' },
-  { value: 'FAIR',     label: 'Khá' },
-  { value: 'POOR',     label: 'Cũ' },
+  { value: 'GOOD', label: 'Tốt' },
+  { value: 'FAIR', label: 'Khá' },
+  { value: 'POOR', label: 'Cũ' },
 ];
 
 type ActiveModal = null | 'sort' | 'condition' | 'brand' | 'category' | 'price';
 
 const ShopScreen = ({ navigation, route }: any) => {
-  const [listings, setListings]   = useState<BicycleListing[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [viewMode, setViewMode]   = useState<ViewMode>('list');
+  const [listings, setListings] = useState<BicycleListing[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
 
   // Filter state
-  const [sort, setSort]           = useState('-createdAt');
+  const [sort, setSort] = useState('-createdAt');
   const [condition, setCondition] = useState<BicycleCondition | null>(null);
-  const [brand, setBrand]         = useState<Brand | null>(null);
-  const [category, setCategory]   = useState<{ _id: string; name: string } | null>(
+  const [brand, setBrand] = useState<Brand | null>(null);
+  const [category, setCategory] = useState<{
+    _id: string;
+    name: string;
+  } | null>(
     route.params?.categoryId
       ? { _id: route.params.categoryId, name: route.params.categoryName ?? '' }
       : null,
   );
-  const [minPrice, setMinPrice]   = useState('');
-  const [maxPrice, setMaxPrice]   = useState('');
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
 
   // Modal state
   const [activeModal, setActiveModal] = useState<ActiveModal>(null);
-  const [brands, setBrands]           = useState<Brand[]>([]);
-  const [categories, setCategories]   = useState<Category[]>([]);
-  const [tempMin, setTempMin]         = useState('');
-  const [tempMax, setTempMax]         = useState('');
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [tempMin, setTempMin] = useState('');
+  const [tempMax, setTempMax] = useState('');
 
   const filterMounted = useRef(false);
+  const listRef = useRef<FlatList<BicycleListing>>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
+      listRef.current?.scrollToOffset({ offset: 0, animated: false });
       loadListings();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []),
   );
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener(
+      SCROLL_TO_TOP_EVENT,
+      ({ routeName }) => {
+        if (routeName === 'Shop') {
+          listRef.current?.scrollToOffset({ offset: 0, animated: true });
+        }
+      },
+    );
+    return () => sub.remove();
+  }, []);
 
   // Watch route params for category updates from Home navigation
   useEffect(() => {
     if (route.params?.categoryId) {
-      setCategory({ _id: route.params.categoryId, name: route.params.categoryName ?? '' });
+      setCategory({
+        _id: route.params.categoryId,
+        name: route.params.categoryName ?? '',
+      });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [route.params?.categoryId]);
 
   useEffect(() => {
-    if (!filterMounted.current) { filterMounted.current = true; return; }
+    if (!filterMounted.current) {
+      filterMounted.current = true;
+      return;
+    }
     loadListings();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sort, condition, brand, category, minPrice, maxPrice]);
 
-  const loadListings = async () => {
+  const loadListings = async (isRefresh = false) => {
     try {
-      setLoading(true);
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       const params: Record<string, any> = { sort, limit: 50 };
-      if (condition) { params.condition = condition; }
-      if (brand)     { params.brand     = brand._id; }
-      if (category)  { params.category  = category._id; }
-      if (minPrice)  { params.minPrice  = Number(minPrice); }
-      if (maxPrice)  { params.maxPrice  = Number(maxPrice); }
-      params.status = 'APPROVED'
+      if (condition) {
+        params.condition = condition;
+      }
+      if (brand) {
+        params.brand = brand._id;
+      }
+      if (category) {
+        params.category = category._id;
+      }
+      if (minPrice) {
+        params.minPrice = Number(minPrice);
+      }
+      if (maxPrice) {
+        params.maxPrice = Number(maxPrice);
+      }
+      params.status = 'APPROVED';
       const res = await bicycleService.getBicycles(params);
       setListings(res.data);
     } catch {
       setListings([]);
     } finally {
-      setLoading(false);
+      if (isRefresh) {
+        setRefreshing(false);
+      } else {
+        setLoading(false);
+      }
     }
   };
 
@@ -116,7 +164,9 @@ const ShopScreen = ({ navigation, route }: any) => {
       try {
         const b = await bicycleService.getBrands();
         setBrands(b);
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
   };
 
@@ -126,7 +176,9 @@ const ShopScreen = ({ navigation, route }: any) => {
       try {
         const c = await categoryService.getActiveCategories();
         setCategories(c);
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
   };
 
@@ -152,7 +204,12 @@ const ShopScreen = ({ navigation, route }: any) => {
   };
 
   const hasActiveFilters =
-    condition !== null || brand !== null || category !== null || minPrice !== '' || maxPrice !== '' || sort !== '-createdAt';
+    condition !== null ||
+    brand !== null ||
+    category !== null ||
+    minPrice !== '' ||
+    maxPrice !== '' ||
+    sort !== '-createdAt';
 
   /* ─── Header ─── */
   const renderHeader = () => (
@@ -181,7 +238,10 @@ const ShopScreen = ({ navigation, route }: any) => {
         onOpenCategory={openCategoryModal}
         onClearCategory={() => setCategory(null)}
         onOpenPrice={openPriceModal}
-        onClearPrice={() => { setMinPrice(''); setMaxPrice(''); }}
+        onClearPrice={() => {
+          setMinPrice('');
+          setMaxPrice('');
+        }}
         onClearAll={clearAllFilters}
       />
 
@@ -208,9 +268,17 @@ const ShopScreen = ({ navigation, route }: any) => {
             <TouchableOpacity
               key={opt.value}
               style={styles.sheetRow}
-              onPress={() => { setSort(opt.value); setActiveModal(null); }}
+              onPress={() => {
+                setSort(opt.value);
+                setActiveModal(null);
+              }}
             >
-              <Text style={[styles.sheetRowText, sort === opt.value && styles.sheetRowTextActive]}>
+              <Text
+                style={[
+                  styles.sheetRowText,
+                  sort === opt.value && styles.sheetRowTextActive,
+                ]}
+              >
                 {opt.label}
               </Text>
               {sort === opt.value && (
@@ -237,20 +305,38 @@ const ShopScreen = ({ navigation, route }: any) => {
           <Text style={styles.sheetTitle}>Tình trạng xe</Text>
           <TouchableOpacity
             style={styles.sheetRow}
-            onPress={() => { setCondition(null); setActiveModal(null); }}
+            onPress={() => {
+              setCondition(null);
+              setActiveModal(null);
+            }}
           >
-            <Text style={[styles.sheetRowText, condition === null && styles.sheetRowTextActive]}>
+            <Text
+              style={[
+                styles.sheetRowText,
+                condition === null && styles.sheetRowTextActive,
+              ]}
+            >
               Tất cả
             </Text>
-            {condition === null && <Icon name="checkmark" size={18} color={colors.primaryGreen} />}
+            {condition === null && (
+              <Icon name="checkmark" size={18} color={colors.primaryGreen} />
+            )}
           </TouchableOpacity>
           {CONDITION_OPTIONS.map(opt => (
             <TouchableOpacity
               key={opt.value}
               style={styles.sheetRow}
-              onPress={() => { setCondition(opt.value); setActiveModal(null); }}
+              onPress={() => {
+                setCondition(opt.value);
+                setActiveModal(null);
+              }}
             >
-              <Text style={[styles.sheetRowText, condition === opt.value && styles.sheetRowTextActive]}>
+              <Text
+                style={[
+                  styles.sheetRowText,
+                  condition === opt.value && styles.sheetRowTextActive,
+                ]}
+              >
                 {opt.label}
               </Text>
               {condition === opt.value && (
@@ -278,24 +364,46 @@ const ShopScreen = ({ navigation, route }: any) => {
           <ScrollView showsVerticalScrollIndicator={false}>
             <TouchableOpacity
               style={styles.sheetRow}
-              onPress={() => { setCategory(null); setActiveModal(null); }}
+              onPress={() => {
+                setCategory(null);
+                setActiveModal(null);
+              }}
             >
-              <Text style={[styles.sheetRowText, category === null && styles.sheetRowTextActive]}>
+              <Text
+                style={[
+                  styles.sheetRowText,
+                  category === null && styles.sheetRowTextActive,
+                ]}
+              >
                 Tất cả danh mục
               </Text>
-              {category === null && <Icon name="checkmark" size={18} color={colors.primaryGreen} />}
+              {category === null && (
+                <Icon name="checkmark" size={18} color={colors.primaryGreen} />
+              )}
             </TouchableOpacity>
             {categories.map(c => (
               <TouchableOpacity
                 key={c._id}
                 style={styles.sheetRow}
-                onPress={() => { setCategory({ _id: c._id, name: c.name }); setActiveModal(null); }}
+                onPress={() => {
+                  setCategory({ _id: c._id, name: c.name });
+                  setActiveModal(null);
+                }}
               >
-                <Text style={[styles.sheetRowText, category?._id === c._id && styles.sheetRowTextActive]}>
+                <Text
+                  style={[
+                    styles.sheetRowText,
+                    category?._id === c._id && styles.sheetRowTextActive,
+                  ]}
+                >
                   {c.name}
                 </Text>
                 {category?._id === c._id && (
-                  <Icon name="checkmark" size={18} color={colors.primaryGreen} />
+                  <Icon
+                    name="checkmark"
+                    size={18}
+                    color={colors.primaryGreen}
+                  />
                 )}
               </TouchableOpacity>
             ))}
@@ -320,24 +428,46 @@ const ShopScreen = ({ navigation, route }: any) => {
           <ScrollView showsVerticalScrollIndicator={false}>
             <TouchableOpacity
               style={styles.sheetRow}
-              onPress={() => { setBrand(null); setActiveModal(null); }}
+              onPress={() => {
+                setBrand(null);
+                setActiveModal(null);
+              }}
             >
-              <Text style={[styles.sheetRowText, brand === null && styles.sheetRowTextActive]}>
+              <Text
+                style={[
+                  styles.sheetRowText,
+                  brand === null && styles.sheetRowTextActive,
+                ]}
+              >
                 Tất cả thương hiệu
               </Text>
-              {brand === null && <Icon name="checkmark" size={18} color={colors.primaryGreen} />}
+              {brand === null && (
+                <Icon name="checkmark" size={18} color={colors.primaryGreen} />
+              )}
             </TouchableOpacity>
             {brands.map(b => (
               <TouchableOpacity
                 key={b._id}
                 style={styles.sheetRow}
-                onPress={() => { setBrand(b); setActiveModal(null); }}
+                onPress={() => {
+                  setBrand(b);
+                  setActiveModal(null);
+                }}
               >
-                <Text style={[styles.sheetRowText, brand?._id === b._id && styles.sheetRowTextActive]}>
+                <Text
+                  style={[
+                    styles.sheetRowText,
+                    brand?._id === b._id && styles.sheetRowTextActive,
+                  ]}
+                >
                   {b.name}
                 </Text>
                 {brand?._id === b._id && (
-                  <Icon name="checkmark" size={18} color={colors.primaryGreen} />
+                  <Icon
+                    name="checkmark"
+                    size={18}
+                    color={colors.primaryGreen}
+                  />
                 )}
               </TouchableOpacity>
             ))}
@@ -386,15 +516,18 @@ const ShopScreen = ({ navigation, route }: any) => {
           </View>
           <View style={styles.priceQuickRow}>
             {[
-              { label: '< 5tr',     min: '',         max: '5000000' },
-              { label: '5 – 15tr',  min: '5000000',  max: '15000000' },
+              { label: '< 5tr', min: '', max: '5000000' },
+              { label: '5 – 15tr', min: '5000000', max: '15000000' },
               { label: '15 – 30tr', min: '15000000', max: '30000000' },
-              { label: '> 30tr',    min: '30000000', max: '' },
+              { label: '> 30tr', min: '30000000', max: '' },
             ].map(q => (
               <TouchableOpacity
                 key={q.label}
                 style={styles.quickPriceChip}
-                onPress={() => { setTempMin(q.min); setTempMax(q.max); }}
+                onPress={() => {
+                  setTempMin(q.min);
+                  setTempMax(q.max);
+                }}
               >
                 <Text style={styles.quickPriceText}>{q.label}</Text>
               </TouchableOpacity>
@@ -403,7 +536,10 @@ const ShopScreen = ({ navigation, route }: any) => {
           <View style={styles.priceActions}>
             <TouchableOpacity
               style={styles.clearBtn}
-              onPress={() => { setTempMin(''); setTempMax(''); }}
+              onPress={() => {
+                setTempMin('');
+                setTempMax('');
+              }}
             >
               <Text style={styles.clearBtnText}>Xóa</Text>
             </TouchableOpacity>
@@ -425,24 +561,40 @@ const ShopScreen = ({ navigation, route }: any) => {
         </View>
       ) : (
         <FlatList
+          ref={listRef}
           ListHeaderComponent={renderHeader}
           data={listings}
           keyExtractor={item => item._id}
           renderItem={({ item }) =>
-            viewMode === 'list'
-              ? <BicycleListCard item={item} onPress={() => navigation.navigate('BicycleDetail', { id: item._id })} />
-              : <BicycleGridCard item={item} onPress={() => navigation.navigate('BicycleDetail', { id: item._id })} />
+            viewMode === 'list' ? (
+              <BicycleListCard
+                item={item}
+                onPress={() =>
+                  navigation.navigate('BicycleDetail', { id: item._id })
+                }
+              />
+            ) : (
+              <BicycleGridCard
+                item={item}
+                onPress={() =>
+                  navigation.navigate('BicycleDetail', { id: item._id })
+                }
+              />
+            )
           }
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
-          onRefresh={loadListings}
-          refreshing={false}
+          onRefresh={() => loadListings(true)}
+          refreshing={refreshing}
           ListEmptyComponent={
             <View style={styles.emptyBox}>
               <Icon name="bicycle-outline" size={60} color={colors.gray[300]} />
               <Text style={styles.emptyText}>Không tìm thấy xe đạp nào</Text>
               {hasActiveFilters && (
-                <TouchableOpacity style={styles.clearFiltersBtn} onPress={clearAllFilters}>
+                <TouchableOpacity
+                  style={styles.clearFiltersBtn}
+                  onPress={clearAllFilters}
+                >
                   <Text style={styles.clearFiltersBtnText}>Xóa bộ lọc</Text>
                 </TouchableOpacity>
               )}
@@ -461,8 +613,13 @@ const ShopScreen = ({ navigation, route }: any) => {
 };
 
 const styles = StyleSheet.create({
-  safeArea:    { flex: 1, backgroundColor: colors.backgroundSecondary },
-  loadingBox:  { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  safeArea: { flex: 1, backgroundColor: colors.backgroundSecondary },
+  loadingBox: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
   loadingText: { fontSize: 14, color: colors.textSecondary },
   listContent: { padding: 16, paddingBottom: 100 },
 
@@ -477,7 +634,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.gray[200],
   },
-  searchPlaceholder: { flex: 1, marginLeft: 8, fontSize: 15, color: colors.gray[400] },
+  searchPlaceholder: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 15,
+    color: colors.gray[400],
+  },
 
   resultsRow: {
     flexDirection: 'row',
@@ -485,10 +647,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  resultsCount: { fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
+  resultsCount: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
 
   /* empty */
-  emptyBox: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60, gap: 12 },
+  emptyBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    gap: 12,
+  },
   emptyText: { fontSize: 16, color: colors.textSecondary },
   clearFiltersBtn: {
     paddingHorizontal: 20,
@@ -521,7 +692,12 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginBottom: 16,
   },
-  sheetTitle:       { fontSize: 17, fontWeight: '700', color: colors.textPrimary, marginBottom: 12 },
+  sheetTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 12,
+  },
   sheetRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -530,13 +706,22 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.gray[100],
   },
-  sheetRowText:       { fontSize: 15, color: colors.textPrimary },
+  sheetRowText: { fontSize: 15, color: colors.textPrimary },
   sheetRowTextActive: { color: colors.primaryGreen, fontWeight: '600' },
 
   /* price modal */
-  priceInputsRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 8 },
-  priceInputBox:  { flex: 1 },
-  priceInputLabel: { fontSize: 12, color: colors.textSecondary, marginBottom: 6 },
+  priceInputsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 8,
+  },
+  priceInputBox: { flex: 1 },
+  priceInputLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: 6,
+  },
   priceInput: {
     borderWidth: 1,
     borderColor: colors.gray[200],
@@ -563,7 +748,7 @@ const styles = StyleSheet.create({
     borderColor: colors.gray[200],
   },
   quickPriceText: { fontSize: 13, color: colors.textPrimary },
-  priceActions:  { flexDirection: 'row', gap: 12 },
+  priceActions: { flexDirection: 'row', gap: 12 },
   clearBtn: {
     flex: 1,
     paddingVertical: 13,
@@ -572,7 +757,11 @@ const styles = StyleSheet.create({
     borderColor: colors.gray[300],
     alignItems: 'center',
   },
-  clearBtnText: { fontSize: 15, color: colors.textSecondary, fontWeight: '500' },
+  clearBtnText: {
+    fontSize: 15,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
   applyBtn: {
     flex: 2,
     paddingVertical: 13,
