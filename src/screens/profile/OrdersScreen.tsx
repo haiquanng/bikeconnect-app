@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,8 +8,10 @@ import {
   Image,
   ActivityIndicator,
   RefreshControl,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import PagerView from 'react-native-pager-view';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors } from '../../theme';
@@ -132,10 +134,14 @@ const OrderCard = ({ order, onPress }: { order: Order; onPress: () => void }) =>
 
 /* ─── Main Screen ─── */
 const OrdersScreen = ({ navigation }: any) => {
-  const [activeTab, setActiveTab] = useState<TabKey>('all');
-  const [orders, setOrders]       = useState<Order[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [activeIndex, setActiveIndex]   = useState(0);
+  const [orders, setOrders]             = useState<Order[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [refreshing, setRefreshing]     = useState(false);
+
+  const pagerRef      = useRef<PagerView>(null);
+  const tabsScrollRef = useRef<ScrollView>(null);
+  const tabPositions  = useRef<number[]>([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -164,18 +170,28 @@ const OrdersScreen = ({ navigation }: any) => {
     finally { setRefreshing(false); }
   };
 
-  const filteredOrders = activeTab === 'all'
-    ? orders
-    : orders.filter(o => (TAB_STATUSES[activeTab] ?? []).includes(o.status));
+  const scrollTabIntoView = (index: number) => {
+    const x = tabPositions.current[index] ?? 0;
+    tabsScrollRef.current?.scrollTo({ x: Math.max(0, x - 60), animated: true });
+  };
+
+  const handleTabPress = (index: number) => {
+    setActiveIndex(index);
+    pagerRef.current?.setPage(index);
+    scrollTabIntoView(index);
+  };
+
+  const handlePageSelected = (e: any) => {
+    const index = e.nativeEvent.position;
+    setActiveIndex(index);
+    scrollTabIntoView(index);
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => navigation.goBack()}
-        >
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Icon name="arrow-back" size={22} color={colors.white} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Đơn mua của tôi</Text>
@@ -184,18 +200,20 @@ const OrdersScreen = ({ navigation }: any) => {
 
       {/* Tabs */}
       <View style={styles.tabsWrapper}>
-        <FlatList
-          data={TABS}
-          keyExtractor={t => t.key}
+        <ScrollView
+          ref={tabsScrollRef}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.tabsContent}
-          renderItem={({ item: tab }) => {
-            const isActive = tab.key === activeTab;
+        >
+          {TABS.map((tab, index) => {
+            const isActive = index === activeIndex;
             return (
               <TouchableOpacity
+                key={tab.key}
                 style={styles.tab}
-                onPress={() => setActiveTab(tab.key)}
+                onPress={() => handleTabPress(index)}
+                onLayout={e => { tabPositions.current[index] = e.nativeEvent.layout.x; }}
                 activeOpacity={0.75}
               >
                 <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
@@ -204,8 +222,8 @@ const OrdersScreen = ({ navigation }: any) => {
                 {isActive && <View style={styles.tabUnderline} />}
               </TouchableOpacity>
             );
-          }}
-        />
+          })}
+        </ScrollView>
       </View>
 
       <View style={styles.divider} />
@@ -216,45 +234,61 @@ const OrdersScreen = ({ navigation }: any) => {
           <ActivityIndicator size="large" color={colors.primaryGreen} />
         </View>
       ) : (
-        <FlatList
-          data={filteredOrders}
-          keyExtractor={o => o._id}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[colors.primaryGreen]}
-              tintColor={colors.primaryGreen}
-            />
-          }
-          renderItem={({ item }) => (
-            <OrderCard
-              order={item}
-              onPress={() => navigation.navigate('OrderDetail', { orderId: item._id })}
-            />
-          )}
-          ListEmptyComponent={
-            <View style={styles.empty}>
-              <Icon name="document-text-outline" size={64} color={colors.gray[300]} />
-              <Text style={styles.emptyTitle}>Chưa có đơn hàng</Text>
-              <Text style={styles.emptyDesc}>
-                {activeTab === 'all'
-                  ? 'Bắt đầu mua sắm để xem đơn hàng ở đây'
-                  : 'Không có đơn hàng nào trong mục này'}
-              </Text>
-              {activeTab === 'all' && (
-                <TouchableOpacity
-                  style={styles.shopBtn}
-                  onPress={() => navigation.navigate('Main', { screen: 'Shop' })}
-                >
-                  <Text style={styles.shopBtnText}>Khám phá xe đạp</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          }
-        />
+        <PagerView
+          ref={pagerRef}
+          style={styles.pager}
+          initialPage={0}
+          onPageSelected={handlePageSelected}
+        >
+          {TABS.map((tab, index) => {
+            const data = tab.key === 'all'
+              ? orders
+              : orders.filter(o => (TAB_STATUSES[tab.key] ?? []).includes(o.status));
+            return (
+              <View key={index} style={styles.page}>
+                <FlatList
+                  data={data}
+                  keyExtractor={o => o._id}
+                  contentContainerStyle={styles.listContent}
+                  showsVerticalScrollIndicator={false}
+                  refreshControl={
+                    <RefreshControl
+                      refreshing={refreshing}
+                      onRefresh={onRefresh}
+                      colors={[colors.primaryGreen]}
+                      tintColor={colors.primaryGreen}
+                    />
+                  }
+                  renderItem={({ item }) => (
+                    <OrderCard
+                      order={item}
+                      onPress={() => navigation.navigate('OrderDetail', { orderId: item._id })}
+                    />
+                  )}
+                  ListEmptyComponent={
+                    <View style={styles.empty}>
+                      <Icon name="document-text-outline" size={64} color={colors.gray[300]} />
+                      <Text style={styles.emptyTitle}>Chưa có đơn hàng</Text>
+                      <Text style={styles.emptyDesc}>
+                        {tab.key === 'all'
+                          ? 'Bắt đầu mua sắm để xem đơn hàng ở đây'
+                          : 'Không có đơn hàng nào trong mục này'}
+                      </Text>
+                      {tab.key === 'all' && (
+                        <TouchableOpacity
+                          style={styles.shopBtn}
+                          onPress={() => navigation.navigate('Main', { screen: 'Shop' })}
+                        >
+                          <Text style={styles.shopBtnText}>Khám phá xe đạp</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  }
+                />
+              </View>
+            );
+          })}
+        </PagerView>
       )}
     </SafeAreaView>
   );
@@ -303,6 +337,8 @@ const styles = StyleSheet.create({
   divider: { height: 1, backgroundColor: colors.gray[100] },
 
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  pager: { flex: 1 },
+  page:  { flex: 1 },
   listContent: { padding: 16, gap: 12, paddingBottom: 80 },
 
   /* Order Card */
