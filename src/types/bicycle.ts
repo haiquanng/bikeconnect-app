@@ -24,7 +24,15 @@ export interface BicycleListing {
     frameMaterial?: string;
     color?: string;
   };
-  location?: { address?: string; city?: string };
+  location?: {
+    address?: string;
+    ward?: string;
+    wardCode?: string;
+    district?: string;
+    districtId?: number;
+    city?: string;
+    provinceId?: number;
+  };
   images: MediaItem[];
   createdAt: string;
   updatedAt: string;
@@ -63,7 +71,15 @@ export interface CreateListingFormData {
   // Step 2 — Thông tin cơ bản
   title: string;
   description: string;
+  // Location (GHN)
   city: string;
+  provinceId: number | null;
+  district: string;
+  districtId: number | null;
+  ward: string;
+  wardCode: string;
+  street: string;
+  // Specs
   origin: string;
   yearManufactured: string;
   frameSize: string;
@@ -93,6 +109,12 @@ export const INITIAL_FORM_DATA: CreateListingFormData = {
   title: '',
   description: '',
   city: '',
+  provinceId: null,
+  district: '',
+  districtId: null,
+  ward: '',
+  wardCode: '',
+  street: '',
   origin: '',
   yearManufactured: '',
   frameSize: '',

@@ -22,6 +22,17 @@ interface GHNResponse<T> {
   data: T[];
 }
 
+export interface ShippingFeeResult {
+  total: number;
+  serviceFee: number;
+  insuranceFee: number;
+}
+
+interface ShippingFeeResponse {
+  success: boolean;
+  data: ShippingFeeResult;
+}
+
 export const shippingService = {
   async getProvinces(): Promise<GHNProvince[]> {
     const res = await apiClient.get<GHNResponse<GHNProvince>>('/shipping/provinces');
@@ -36,5 +47,17 @@ export const shippingService = {
   async getWards(districtId: number): Promise<GHNWard[]> {
     const res = await apiClient.get<GHNResponse<GHNWard>>(`/shipping/wards/${districtId}`);
     return res.data ?? [];
+  },
+
+  async calculateFee(params: {
+    fromDistrictId: number;
+    fromWardCode: string;
+    toDistrictId: number;
+    toWardCode: string;
+    weight?: number;
+    insuranceValue?: number;
+  }): Promise<ShippingFeeResult> {
+    const res = await apiClient.post<ShippingFeeResponse>('/shipping/calculate-fee', params);
+    return res.data;
   },
 };

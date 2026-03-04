@@ -105,7 +105,13 @@ const CreateListingScreen: React.FC<Props> = ({ navigation }) => {
       if (formData.color) specs.color = formData.color;
 
       const location: Record<string, unknown> = {};
-      if (formData.city) location.city = formData.city;
+      if (formData.city)       location.city       = formData.city;
+      if (formData.provinceId) location.provinceId = formData.provinceId;
+      if (formData.district)   location.district   = formData.district;
+      if (formData.districtId) location.districtId = formData.districtId;
+      if (formData.ward)       location.ward       = formData.ward;
+      if (formData.wardCode)   location.wardCode   = formData.wardCode;
+      if (formData.street)     location.address    = formData.street;
 
       const payload: CreateBicycleRequest = {
         title: formData.title,

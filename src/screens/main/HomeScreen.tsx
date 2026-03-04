@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,9 @@ import {
   Image,
   FlatList,
   ActivityIndicator,
+  RefreshControl,
   useWindowDimensions,
+  DeviceEventEmitter,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -21,13 +23,24 @@ import type { BicycleListing } from '../../types/bicycle';
 import type { Category } from '../../types/category';
 import BicycleFeaturedCard from '../../components/molecules/BicycleFeaturedCard';
 import BicycleListCard from '../../components/molecules/BicycleListCard';
+import { SCROLL_TO_TOP_EVENT } from '../../components/organisms/CustomTabBar';
 
 /* ─── Header ─── */
-const HomeHeader = ({ user, onNotification }: { user: any; onNotification: () => void }) => (
+const HomeHeader = ({
+  user,
+  onNotification,
+}: {
+  user: any;
+  onNotification: () => void;
+}) => (
   <View style={styles.header}>
     <View style={styles.headerLeft}>
       <Image
-        source={{ uri: user?.avatarUrl || 'https://api.dicebear.com/9.x/adventurer/svg?seed=Easton' }}
+        source={{
+          uri:
+            user?.avatarUrl ||
+            'https://api.dicebear.com/9.x/adventurer/svg?seed=Easton',
+        }}
         style={styles.avatar}
       />
       <View>
@@ -44,7 +57,11 @@ const HomeHeader = ({ user, onNotification }: { user: any; onNotification: () =>
 
 /* ─── Search bar ─── */
 const HomeSearchBar = ({ onPress }: { onPress: () => void }) => (
-  <TouchableOpacity style={styles.searchBar} onPress={onPress} activeOpacity={0.8}>
+  <TouchableOpacity
+    style={styles.searchBar}
+    onPress={onPress}
+    activeOpacity={0.8}
+  >
     <Icon name="search-outline" size={20} color={colors.gray[400]} />
     <Text style={styles.searchPlaceholder}>Tìm kiếm xe đạp...</Text>
   </TouchableOpacity>
@@ -60,7 +77,9 @@ const HomeBanner = ({ width }: { width: number }) => (
         <Text style={styles.bannerSub}>Mua bán xe đạp uy tín</Text>
       </View>
       <Image
-        source={{ uri: 'https://cdn.chotot.com/hu4kInagzHTL4VwtoIVHCdn2OwEm2gCJCNmwMNhISP0/preset:view/plain/a1a0fc6376515d7dff954516fba9dd06-2964946847987595881.jpg' }}
+        source={{
+          uri: 'https://cdn.chotot.com/hu4kInagzHTL4VwtoIVHCdn2OwEm2gCJCNmwMNhISP0/preset:view/plain/a1a0fc6376515d7dff954516fba9dd06-2964946847987595881.jpg',
+        }}
         style={styles.bannerImage}
         resizeMode="contain"
       />
@@ -76,20 +95,36 @@ const HomeCategoryItem = ({
   category: Category;
   onPress: () => void;
 }) => (
-  <TouchableOpacity style={styles.categoryItem} onPress={onPress} activeOpacity={0.75}>
+  <TouchableOpacity
+    style={styles.categoryItem}
+    onPress={onPress}
+    activeOpacity={0.75}
+  >
     {category.imageUrl ? (
-      <Image source={{ uri: category.imageUrl }} style={styles.categoryImage} resizeMode="cover" />
+      <Image
+        source={{ uri: category.imageUrl }}
+        style={styles.categoryImage}
+        resizeMode="cover"
+      />
     ) : (
       <View style={styles.categoryIconBox}>
         <Icon name="bicycle-outline" size={26} color={colors.primaryGreen} />
       </View>
     )}
-    <Text style={styles.categoryName} numberOfLines={2}>{category.name}</Text>
+    <Text style={styles.categoryName} numberOfLines={2}>
+      {category.name}
+    </Text>
   </TouchableOpacity>
 );
 
 /* ─── Section header ─── */
-const SectionHeader = ({ title, onSeeAll }: { title: string; onSeeAll?: () => void }) => (
+const SectionHeader = ({
+  title,
+  onSeeAll,
+}: {
+  title: string;
+  onSeeAll?: () => void;
+}) => (
   <View style={styles.sectionHeader}>
     <Text style={styles.sectionTitle}>{title}</Text>
     {onSeeAll && (
@@ -105,31 +140,51 @@ const HomeScreen = ({ navigation }: any) => {
   const { width } = useWindowDimensions();
   const user = useAppSelector(state => state.auth.user);
 
-  const [categories, setCategories]       = useState<Category[]>([]);
+  const scrollRef = useRef<ScrollView>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [featuredBikes, setFeaturedBikes] = useState<BicycleListing[]>([]);
-  const [recentBikes, setRecentBikes]     = useState<BicycleListing[]>([]);
+  const [recentBikes, setRecentBikes] = useState<BicycleListing[]>([]);
   const [loadingFeatured, setLoadingFeatured] = useState(true);
-  const [loadingRecent, setLoadingRecent]     = useState(true);
+  const [loadingRecent, setLoadingRecent] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
       loadCategories();
       loadFeatured();
       loadRecent();
     }, []),
   );
 
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener(
+      SCROLL_TO_TOP_EVENT,
+      ({ routeName }) => {
+        if (routeName === 'Home') {
+          scrollRef.current?.scrollTo({ y: 0, animated: true });
+        }
+      },
+    );
+    return () => sub.remove();
+  }, []);
+
   const loadCategories = async () => {
     try {
       const data = await categoryService.getActiveCategories();
       setCategories(data);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   };
 
   const loadFeatured = async () => {
     try {
       setLoadingFeatured(true);
-      const res = await bicycleService.getBicycles({ sort: '-viewCount', limit: 8 });
+      const res = await bicycleService.getBicycles({
+        sort: '-viewCount',
+        limit: 8,
+      });
       setFeaturedBikes(res.data);
     } catch {
       setFeaturedBikes([]);
@@ -141,7 +196,10 @@ const HomeScreen = ({ navigation }: any) => {
   const loadRecent = async () => {
     try {
       setLoadingRecent(true);
-      const res = await bicycleService.getBicycles({ sort: '-createdAt', limit: 10 });
+      const res = await bicycleService.getBicycles({
+        sort: '-createdAt',
+        limit: 10,
+      });
       setRecentBikes(res.data);
     } catch {
       setRecentBikes([]);
@@ -150,14 +208,37 @@ const HomeScreen = ({ navigation }: any) => {
     }
   };
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([loadCategories(), loadFeatured(), loadRecent()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+
   const goToShopWithCategory = (cat: Category) => {
-    navigation.navigate('Shop', { categoryId: cat._id, categoryName: cat.name });
+    navigation.navigate('Shop', {
+      categoryId: cat._id,
+      categoryName: cat.name,
+    });
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-
+      <ScrollView
+        ref={scrollRef}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primaryGreen]}
+            tintColor={colors.primaryGreen}
+          />
+        }
+      >
         <HomeHeader
           user={user}
           onNotification={() => navigation.navigate('Notifications')}
@@ -196,7 +277,10 @@ const HomeScreen = ({ navigation }: any) => {
             onSeeAll={() => navigation.navigate('Shop')}
           />
           {loadingFeatured ? (
-            <ActivityIndicator color={colors.primaryGreen} style={styles.loader} />
+            <ActivityIndicator
+              color={colors.primaryGreen}
+              style={styles.loader}
+            />
           ) : featuredBikes.length === 0 ? (
             <Text style={styles.emptyText}>Chưa có xe nào</Text>
           ) : (
@@ -210,7 +294,9 @@ const HomeScreen = ({ navigation }: any) => {
               renderItem={({ item }) => (
                 <BicycleFeaturedCard
                   item={item}
-                  onPress={() => navigation.navigate('BicycleDetail', { id: item._id })}
+                  onPress={() =>
+                    navigation.navigate('BicycleDetail', { id: item._id })
+                  }
                 />
               )}
             />
@@ -224,7 +310,10 @@ const HomeScreen = ({ navigation }: any) => {
             onSeeAll={() => navigation.navigate('Shop')}
           />
           {loadingRecent ? (
-            <ActivityIndicator color={colors.primaryGreen} style={styles.loader} />
+            <ActivityIndicator
+              color={colors.primaryGreen}
+              style={styles.loader}
+            />
           ) : recentBikes.length === 0 ? (
             <Text style={styles.emptyText}>Chưa có xe nào</Text>
           ) : (
@@ -232,12 +321,13 @@ const HomeScreen = ({ navigation }: any) => {
               <BicycleListCard
                 key={item._id}
                 item={item}
-                onPress={() => navigation.navigate('BicycleDetail', { id: item._id })}
+                onPress={() =>
+                  navigation.navigate('BicycleDetail', { id: item._id })
+                }
               />
             ))
           )}
         </View>
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -272,8 +362,8 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     backgroundColor: colors.gray[200],
   },
-  greeting:  { fontSize: 13, color: colors.textSecondary },
-  userName:  { fontSize: 16, fontWeight: '700', color: colors.textPrimary },
+  greeting: { fontSize: 13, color: colors.textSecondary },
+  userName: { fontSize: 16, fontWeight: '700', color: colors.textPrimary },
   iconButton: {
     width: 40,
     height: 40,
@@ -405,8 +495,12 @@ const styles = StyleSheet.create({
   featuredRow: { paddingRight: 4 },
 
   /* Misc */
-  loader:    { paddingVertical: 24 },
-  emptyText: { color: colors.textSecondary, textAlign: 'center', paddingVertical: 20 },
+  loader: { paddingVertical: 24 },
+  emptyText: {
+    color: colors.textSecondary,
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
 });
 
 export default HomeScreen;

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,13 +7,16 @@ import {
   Image,
   ScrollView,
   Alert,
+  DeviceEventEmitter,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { useFocusEffect } from '@react-navigation/native';
 import { colors } from '../../theme';
 import { useAppSelector, useAppDispatch } from '../../redux/hooks';
 import { logout } from '../../redux/auth/authSlice';
 import { authStorage } from '../../utils/authStorage';
+import { SCROLL_TO_TOP_EVENT } from '../../components/organisms/CustomTabBar';
 
 interface MenuItem {
   id: string;
@@ -27,6 +30,25 @@ interface MenuItem {
 const ProfileScreen = ({ navigation }: any) => {
   const dispatch = useAppDispatch();
   const user = useAppSelector(state => state.auth.user);
+  const scrollRef = useRef<ScrollView>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, []),
+  );
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener(
+      SCROLL_TO_TOP_EVENT,
+      ({ routeName }) => {
+        if (routeName === 'Profile') {
+          scrollRef.current?.scrollTo({ y: 0, animated: true });
+        }
+      },
+    );
+    return () => sub.remove();
+  }, []);
 
   const handleSignOut = () => {
     Alert.alert(
@@ -121,6 +143,7 @@ const ProfileScreen = ({ navigation }: any) => {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >

@@ -1,18 +1,20 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { colors } from '../../../theme';
 import type { PaymentType } from '../../../types/order';
 import { formatPrice } from '../../../utils/helper';
 
-export const SHIPPING_FEE = 30_000;
+export const DEFAULT_SHIPPING_FEE = 30_000;
 
 interface Props {
   bicyclePrice: number;
   paymentType: PaymentType;
+  shippingFee?: number;
+  calculatingFee?: boolean;
 }
 
-const PriceSummary: React.FC<Props> = ({ bicyclePrice, paymentType }) => {
-  const total   = bicyclePrice + SHIPPING_FEE;
+const PriceSummary: React.FC<Props> = ({ bicyclePrice, paymentType, shippingFee = DEFAULT_SHIPPING_FEE, calculatingFee = false }) => {
+  const total   = bicyclePrice + shippingFee;
   const deposit = Math.round(total * 0.1);
 
   return (
@@ -22,11 +24,12 @@ const PriceSummary: React.FC<Props> = ({ bicyclePrice, paymentType }) => {
       <Row label="Giá xe" value={formatPrice(bicyclePrice)} />
       <Row
         label="Phí vận chuyển"
-        value={formatPrice(SHIPPING_FEE)}
-        subLabel="(dự kiến)"
+        value={calculatingFee ? '' : formatPrice(shippingFee)}
+        subLabel={calculatingFee ? undefined : '(GHN)'}
+        loading={calculatingFee}
       />
       <View style={styles.divider} />
-      <Row label="Tổng cộng" value={formatPrice(total)} bold />
+      <Row label="Tổng cộng" value={formatPrice(total)} bold loading={calculatingFee} />
 
       {paymentType === 'DEPOSIT_10' && (
         <>
@@ -52,21 +55,27 @@ const Row = ({
   subLabel,
   bold,
   green,
+  loading,
 }: {
   label: string;
   value: string;
   subLabel?: string;
   bold?: boolean;
   green?: boolean;
+  loading?: boolean;
 }) => (
   <View style={styles.row}>
     <View style={styles.rowLeft}>
       <Text style={[styles.rowLabel, bold && styles.bold]}>{label}</Text>
       {subLabel && <Text style={styles.subLabel}>{subLabel}</Text>}
     </View>
-    <Text style={[styles.rowValue, bold && styles.bold, green && styles.green]}>
-      {value}
-    </Text>
+    {loading ? (
+      <ActivityIndicator size="small" color={colors.primaryGreen} />
+    ) : (
+      <Text style={[styles.rowValue, bold && styles.bold, green && styles.green]}>
+        {value}
+      </Text>
+    )}
   </View>
 );
 

@@ -222,12 +222,13 @@ const BicycleDetailScreen = ({ navigation, route }: any) => {
         onDeposit={() => {}}
         onBuy={() =>
           navigation.navigate('Checkout', {
-            bicycleId: item._id,
-            bicycleTitle: item.title,
-            bicyclePrice: item.price,
-            primaryImage: primaryImg?.url,
-            condition: item.condition,
-            paymentType: 'FULL_100',
+            bicycleId:        item._id,
+            bicycleTitle:     item.title,
+            bicyclePrice:     item.price,
+            primaryImage:     primaryImg?.url,
+            condition:        item.condition,
+            fromDistrictId: item.location?.districtId,
+            fromWardCode:   item.location?.wardCode,
           })
         }
       />

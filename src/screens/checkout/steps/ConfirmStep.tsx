@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../../theme';
 import type { Address } from '../../../types/user';
 import BikeSummaryCard from '../components/BikeSummaryCard';
-import PriceSummary, { SHIPPING_FEE } from '../components/PriceSummary';
+import PriceSummary from '../components/PriceSummary';
 
 const formatPrice = (price: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
@@ -30,14 +30,16 @@ interface BikeInfo {
 interface Props {
   bike: BikeInfo;
   address: Address;
+  shippingFee: number;
+  calculatingFee: boolean;
   onConfirm: () => void;
   onBack: () => void;
   loading: boolean;
 }
 
-const ConfirmStep: React.FC<Props> = ({ bike, address, onConfirm, onBack, loading }) => {
+const ConfirmStep: React.FC<Props> = ({ bike, address, shippingFee, calculatingFee, onConfirm, onBack, loading }) => {
   const insets = useSafeAreaInsets();
-  const total  = bike.bicyclePrice + SHIPPING_FEE;
+  const total  = bike.bicyclePrice + shippingFee;
 
   return (
     <>
@@ -90,7 +92,12 @@ const ConfirmStep: React.FC<Props> = ({ bike, address, onConfirm, onBack, loadin
         </View>
 
         {/* Price summary */}
-        <PriceSummary bicyclePrice={bike.bicyclePrice} paymentType="FULL_100" />
+        <PriceSummary
+          bicyclePrice={bike.bicyclePrice}
+          paymentType="FULL_100"
+          shippingFee={shippingFee}
+          calculatingFee={calculatingFee}
+        />
       </ScrollView>
 
       {/* Bottom CTA */}

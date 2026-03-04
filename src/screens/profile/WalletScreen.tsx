@@ -105,8 +105,9 @@ const WalletScreen = ({ navigation }: any) => {
   };
 
   const handleWebViewNav = (state: WebViewNavigation) => {
+    if (state.loading) { return; }
+
     const url = state.url;
-    // Detect when VNPay has redirected back to our backend return URL
     const isReturnUrl = url.includes('/vnpay-return') || url.includes('deposit=success') || url.includes('deposit=fail');
     if (!isReturnUrl) { return; }
 

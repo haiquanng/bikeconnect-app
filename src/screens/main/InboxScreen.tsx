@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,9 +7,12 @@ import {
   Image,
   ScrollView,
   FlatList,
+  RefreshControl,
+  DeviceEventEmitter,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { useFocusEffect } from '@react-navigation/native';
 import { colors } from '../../theme';
 import { Conversation } from '../../types/conversation';
 import {
@@ -17,12 +20,33 @@ import {
   mockBuyingConversations,
 } from '../../data/mockConversations';
 import ConversationItem from '../../components/molecules/ConversationItem';
+import { SCROLL_TO_TOP_EVENT } from '../../components/organisms/CustomTabBar';
 
 type TabType = 'all' | 'buying' | 'selling' | 'unread';
 
 const InboxScreen = ({ navigation }: any) => {
   const [selectedTab, setSelectedTab] = useState<TabType>('all');
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const listRef = useRef<FlatList<Conversation>>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      listRef.current?.scrollToOffset({ offset: 0, animated: false });
+    }, []),
+  );
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener(
+      SCROLL_TO_TOP_EVENT,
+      ({ routeName }) => {
+        if (routeName === 'Inbox') {
+          listRef.current?.scrollToOffset({ offset: 0, animated: true });
+        }
+      },
+    );
+    return () => sub.remove();
+  }, []);
 
   const loadConversations = useCallback(() => {
     let data: Conversation[] = [];
@@ -194,6 +218,7 @@ const InboxScreen = ({ navigation }: any) => {
         </ScrollView>
       ) : (
         <FlatList
+          ref={listRef}
           data={conversations}
           keyExtractor={item => item.id}
           renderItem={({ item }) => (
@@ -205,6 +230,18 @@ const InboxScreen = ({ navigation }: any) => {
             />
           )}
           contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                loadConversations();
+                setRefreshing(false);
+              }}
+              colors={[colors.primaryGreen]}
+              tintColor={colors.primaryGreen}
+            />
+          }
         />
       )}
     </SafeAreaView>
