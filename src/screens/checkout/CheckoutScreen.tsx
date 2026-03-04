@@ -14,6 +14,7 @@ import { useAppSelector } from '../../redux/hooks';
 import type { Address } from '../../types/user';
 import { orderService } from '../../api/orderService';
 import { walletService } from '../../api/walletService';
+import { shippingService } from '../../api/shippingService';
 import { showToast } from '../../utils/toast';
 import StepIndicator from './components/StepIndicator';
 import AddressStep from './steps/AddressStep';
@@ -25,6 +26,9 @@ export interface CheckoutParams {
   bicyclePrice: number;
   primaryImage?: string;
   condition?: string;
+  // Địa chỉ của xe (để tính phí ship GHN)
+  fromDistrictId?: number;
+  fromWardCode?: string;
 }
 
 const STEPS = ['Địa chỉ', 'Thanh toán'];
@@ -36,6 +40,8 @@ const CheckoutScreen = ({ navigation, route }: any) => {
   const [step, setStep]                       = useState(1);
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
   const [loading, setLoading]                 = useState(false);
+  const [shippingFee, setShippingFee]         = useState<number>(30_000);
+  const [calculatingFee, setCalculatingFee]   = useState(false);
 
   const addresses: Address[] = user?.addresses ?? [];
 
@@ -52,6 +58,33 @@ const CheckoutScreen = ({ navigation, route }: any) => {
       }
     }, [selectedAddress, user?.addresses]),
   );
+
+  const handleGoToConfirm = async () => {
+    if (!selectedAddress?.districtId || !selectedAddress?.wardCode) {
+      setStep(2);
+      return;
+    }
+    if (!params.fromDistrictId || !params.fromWardCode) {
+      setStep(2);
+      return;
+    }
+    setStep(2);
+    setCalculatingFee(true);
+    try {
+      const result = await shippingService.calculateFee({
+        fromDistrictId: params.fromDistrictId,
+        fromWardCode:   params.fromWardCode,
+        toDistrictId:   selectedAddress.districtId,
+        toWardCode:     selectedAddress.wardCode,
+        insuranceValue: params.bicyclePrice,
+      });
+      setShippingFee(result.total);
+    } catch {
+      // Giữ giá trị mặc định 30,000 nếu API lỗi
+    } finally {
+      setCalculatingFee(false);
+    }
+  };
 
   const handleConfirm = async () => {
     if (!selectedAddress || !selectedAddress._id) { return; }
@@ -135,7 +168,7 @@ const CheckoutScreen = ({ navigation, route }: any) => {
           selectedAddress={selectedAddress}
           onSelectAddress={setSelectedAddress}
           onAddNew={() => navigation.navigate('AddAddress')}
-          onContinue={() => setStep(2)}
+          onContinue={handleGoToConfirm}
         />
       ) : (
         selectedAddress && (
@@ -147,6 +180,8 @@ const CheckoutScreen = ({ navigation, route }: any) => {
               condition: params.condition,
             }}
             address={selectedAddress}
+            shippingFee={shippingFee}
+            calculatingFee={calculatingFee}
             onConfirm={handleConfirm}
             onBack={() => setStep(1)}
             loading={loading}
