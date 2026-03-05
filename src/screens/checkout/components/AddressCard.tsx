@@ -10,10 +10,8 @@ interface Props {
   onSelect: () => void;
 }
 
-const formatAddress = (a: Address) => {
-  const parts = [a.street, a.ward, a.city].filter(Boolean);
-  return parts.join(', ');
-};
+const formatAddress = (a: Address) =>
+  a.fullAddress || [a.street, a.wardName, a.provinceName].filter(Boolean).join(', ');
 
 const AddressCard: React.FC<Props> = ({ address, selected, onSelect }) => (
   <TouchableOpacity
