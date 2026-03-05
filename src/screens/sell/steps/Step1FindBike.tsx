@@ -14,7 +14,6 @@ import SearchablePickerModal from '../../../components/ui/SearchablePickerModal'
 import { colors } from '../../../theme';
 import type { Category } from '../../../types/category';
 import type { Brand, BicycleModel, CreateListingFormData } from '../../../types/bicycle';
-import { MOCK_MODELS } from '../../../types/bicycle';
 
 interface Props {
   formData: CreateListingFormData;
@@ -27,6 +26,7 @@ const Step1FindBike: React.FC<Props> = ({ formData, onChange }) => {
   const [models, setModels] = useState<BicycleModel[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [loadingBrands, setLoadingBrands] = useState(false);
+  const [loadingModels, setLoadingModels] = useState(false);
   const [brandModalVisible, setBrandModalVisible] = useState(false);
   const [modelModalVisible, setModelModalVisible] = useState(false);
 
@@ -65,15 +65,12 @@ const Step1FindBike: React.FC<Props> = ({ formData, onChange }) => {
       setModels([]);
       return;
     }
-    const brandKey = formData.brandName.toLowerCase();
-    setModels(
-      MOCK_MODELS[brandKey] || [
-        { _id: 'default-1', name: 'Mẫu 1', brandId: formData.brandId },
-        { _id: 'default-2', name: 'Mẫu 2', brandId: formData.brandId },
-        { _id: 'default-3', name: 'Mẫu 3', brandId: formData.brandId },
-      ],
-    );
-  }, [formData.brandId, formData.brandName]);
+    setLoadingModels(true);
+    bicycleService.getModels(formData.brandId)
+      .then(setModels)
+      .catch(() => {})
+      .finally(() => setLoadingModels(false));
+  }, [formData.brandId]);
 
   const handleCategorySelect = (cat: Category) => {
     onChange({
@@ -153,12 +150,17 @@ const Step1FindBike: React.FC<Props> = ({ formData, onChange }) => {
           <TouchableOpacity
             style={styles.pickerButton}
             onPress={() => setModelModalVisible(true)}
+            disabled={loadingModels}
             activeOpacity={0.7}
           >
             <Text style={formData.modelName ? styles.pickerValueText : styles.pickerPlaceholderText}>
               {formData.modelName || 'Chọn mẫu xe...'}
             </Text>
-            <Icon name="chevron-down" size={18} color={colors.gray[400]} />
+            {loadingModels ? (
+              <ActivityIndicator size="small" color={colors.gray[400]} />
+            ) : (
+              <Icon name="chevron-down" size={18} color={colors.gray[400]} />
+            )}
           </TouchableOpacity>
         </View>
       )}

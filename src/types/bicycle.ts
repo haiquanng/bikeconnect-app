@@ -49,7 +49,9 @@ export interface Brand {
 export interface BicycleModel {
   _id: string;
   name: string;
-  brandId: string;
+  brand: { _id: string; name: string };
+  year?: number;
+  isActive: boolean;
 }
 
 export interface MediaItem {
@@ -164,24 +166,3 @@ export const COLOR_OPTIONS = [
   'Đen', 'Trắng', 'Đỏ', 'Xanh dương', 'Xanh lá', 'Vàng', 'Bạc', 'Xám', 'Cam', 'Hồng', 'Khác',
 ];
 
-// Mock data cho models (backend chưa có endpoint)
-export const MOCK_MODELS: Record<string, BicycleModel[]> = {
-  giant: [
-    { _id: 'm1', name: 'TCR Advanced', brandId: 'giant' },
-    { _id: 'm2', name: 'Defy Advanced', brandId: 'giant' },
-    { _id: 'm3', name: 'Propel Advanced', brandId: 'giant' },
-    { _id: 'm4', name: 'Contend', brandId: 'giant' },
-    { _id: 'm5', name: 'Escape', brandId: 'giant' },
-  ],
-  trek: [
-    { _id: 'm6', name: 'Madone', brandId: 'trek' },
-    { _id: 'm7', name: 'Domane', brandId: 'trek' },
-    { _id: 'm8', name: 'Émonda', brandId: 'trek' },
-    { _id: 'm9', name: 'FX Sport', brandId: 'trek' },
-  ],
-  specialized: [
-    { _id: 'm10', name: 'Tarmac', brandId: 'specialized' },
-    { _id: 'm11', name: 'Roubaix', brandId: 'specialized' },
-    { _id: 'm12', name: 'Allez', brandId: 'specialized' },
-  ],
-};

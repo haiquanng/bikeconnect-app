@@ -18,7 +18,7 @@ const formatPrice = (price: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
 
 const formatAddress = (a: Address) =>
-  [a.street, a.ward, a.city].filter(Boolean).join(', ');
+  a.fullAddress || [a.street, a.wardName, a.provinceName].filter(Boolean).join(', ');
 
 interface BikeInfo {
   bicycleTitle: string;

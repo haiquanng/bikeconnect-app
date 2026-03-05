@@ -35,6 +35,15 @@ interface DepositResponse {
   data: { paymentUrl: string; txnRef: string };
 }
 
+export interface WithdrawRequest {
+  _id: string;
+  amount: number;
+  bankInfo: { bankName: string; accountNumber: string; accountName: string };
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'COMPLETED';
+  createdAt: string;
+  rejectedReason?: string;
+}
+
 interface TransactionsResponse {
   success: boolean;
   data: {
@@ -58,6 +67,14 @@ export const walletService = {
     const res = await apiClient.get<TransactionsResponse>('/wallets/transactions', {
       params: { page, limit },
     });
+    return res.data;
+  },
+
+  async withdraw(params: {
+    amount: number;
+    bankInfo: { bankName: string; accountNumber: string; accountName: string };
+  }): Promise<WithdrawRequest> {
+    const res = await apiClient.post<{ success: boolean; data: WithdrawRequest }>('/wallets/withdraw', params);
     return res.data;
   },
 

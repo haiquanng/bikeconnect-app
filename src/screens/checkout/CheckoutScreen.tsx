@@ -1,10 +1,11 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Alert,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -42,6 +43,26 @@ const CheckoutScreen = ({ navigation, route }: any) => {
   const [loading, setLoading]                 = useState(false);
   const [shippingFee, setShippingFee]         = useState<number>(30_000);
   const [calculatingFee, setCalculatingFee]   = useState(false);
+  const [orderSuccess, setOrderSuccess]       = useState(false);
+
+  const scaleAnim   = useRef(new Animated.Value(0)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!orderSuccess) { return; }
+    Animated.parallel([
+      Animated.spring(scaleAnim,   { toValue: 1, useNativeDriver: true, tension: 60, friction: 7 }),
+      Animated.timing(opacityAnim, { toValue: 1, useNativeDriver: true, duration: 300 }),
+    ]).start();
+    const timer = setTimeout(() => {
+      navigation.reset({
+        index: 1,
+        routes: [{ name: 'Main', params: { screen: 'Shop' } }, { name: 'Orders' }],
+      });
+    }, 4000);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderSuccess]);
 
   const addresses: Address[] = user?.addresses ?? [];
 
@@ -118,11 +139,7 @@ const CheckoutScreen = ({ navigation, route }: any) => {
       if (available >= total) {
         // Đủ tiền → thanh toán luôn
         await orderService.payOrder(order._id);
-        showToast('Đặt hàng và thanh toán thành công!');
-        navigation.reset({
-          index: 1,
-          routes: [{ name: 'Main', params: { screen: 'Shop' } }, { name: 'Orders' }],
-        });
+        setOrderSuccess(true);
       } else {
         // Không đủ tiền → ra màn Orders, nhắc nạp tiền
         const shortage = total - available;
@@ -161,6 +178,19 @@ const CheckoutScreen = ({ navigation, route }: any) => {
 
       <StepIndicator currentStep={step} totalSteps={2} labels={STEPS} />
       <View style={styles.divider} />
+
+      {/* Success Overlay */}
+      {orderSuccess && (
+        <Animated.View style={[styles.successOverlay, { opacity: opacityAnim }]}>
+          <Animated.View style={[styles.successCard, { transform: [{ scale: scaleAnim }] }]}>
+            <View style={styles.successIconWrapper}>
+              <Icon name="checkmark" size={52} color={colors.white} />
+            </View>
+            <Text style={styles.successTitle}>Đặt hàng thành công!</Text>
+            <Text style={styles.successSub}>Đang chuyển đến đơn hàng của bạn...</Text>
+          </Animated.View>
+        </Animated.View>
+      )}
 
       {step === 1 ? (
         <AddressStep
@@ -218,6 +248,47 @@ const styles = StyleSheet.create({
   },
   headerSpacer: { width: 36 },
   divider: { height: 1, backgroundColor: colors.gray[100] },
+  successOverlay: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 99,
+  },
+  successCard: {
+    backgroundColor: colors.white,
+    borderRadius: 24,
+    paddingVertical: 40,
+    paddingHorizontal: 32,
+    alignItems: 'center',
+    width: 280,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  successIconWrapper: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: colors.primaryGreen,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  successTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  successSub: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
 });
 
 export default CheckoutScreen;

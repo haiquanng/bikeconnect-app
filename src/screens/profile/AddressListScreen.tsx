@@ -50,10 +50,8 @@ const AddressListScreen = ({ navigation }: any) => {
     }
   };
 
-  const formatAddress = (address: Address): string => {
-    const parts = [address.street, address.ward, address.city];
-    return parts.filter(Boolean).join(', ');
-  };
+  const formatAddress = (address: Address): string =>
+    address.fullAddress || [address.street, address.wardName, address.provinceName].filter(Boolean).join(', ');
 
   return (
     <SafeAreaView style={styles.container}>

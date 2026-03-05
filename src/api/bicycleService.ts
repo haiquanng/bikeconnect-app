@@ -1,5 +1,5 @@
 import { apiClient } from './apiClient';
-import type { Brand, BicycleListing, BicycleStatus, CreateBicycleRequest } from '../types/bicycle';
+import type { Brand, BicycleModel, BicycleListing, BicycleStatus, CreateBicycleRequest } from '../types/bicycle';
 
 interface BrandsResponse {
   success: boolean;
@@ -80,5 +80,13 @@ export const bicycleService = {
   async updateBicycle(id: string, payload: Partial<CreateBicycleRequest>): Promise<BicycleListing> {
     const response = await apiClient.put<BicycleDetailResponse>(`/bicycles/${id}`, payload);
     return response.data;
+  },
+
+  async getModels(brandId: string): Promise<BicycleModel[]> {
+    const response = await apiClient.get<{ success: boolean; data: BicycleModel[] }>(
+      '/bicycle-models',
+      { params: { brandId, isActive: 'true', limit: '100' } },
+    );
+    return response.data ?? [];
   },
 };

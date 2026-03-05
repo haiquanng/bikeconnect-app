@@ -44,13 +44,13 @@ const AddAddressScreen = ({ navigation, route }: any) => {
 
   // Selected values
   const [selectedProvince, setSelectedProvince] = useState<GHNProvince | null>(
-    editAddress?.provinceId ? { ProvinceID: editAddress.provinceId, ProvinceName: editAddress.city || '' } : null,
+    editAddress?.provinceId ? { ProvinceID: editAddress.provinceId, ProvinceName: editAddress.provinceName || '' } : null,
   );
   const [selectedDistrict, setSelectedDistrict] = useState<GHNDistrict | null>(
-    editAddress?.districtId ? { DistrictID: editAddress.districtId, DistrictName: editAddress.district || '', ProvinceID: editAddress.provinceId || 0 } : null,
+    editAddress?.districtId ? { DistrictID: editAddress.districtId, DistrictName: editAddress.districtName || '', ProvinceID: editAddress.provinceId || 0 } : null,
   );
   const [selectedWard, setSelectedWard] = useState<GHNWard | null>(
-    editAddress?.wardCode ? { WardCode: editAddress.wardCode, WardName: editAddress.ward || '', DistrictID: editAddress.districtId || 0 } : null,
+    editAddress?.wardCode ? { WardCode: editAddress.wardCode, WardName: editAddress.wardName || '', DistrictID: editAddress.districtId || 0 } : null,
   );
 
   // Picker visibility
@@ -146,12 +146,13 @@ const AddAddressScreen = ({ navigation, route }: any) => {
     const addressData: Omit<Address, '_id'> = {
       label: label.trim(),
       street: street.trim(),
-      city: selectedProvince.ProvinceName,
+      provinceName: selectedProvince.ProvinceName,
       provinceId: selectedProvince.ProvinceID,
-      district: selectedDistrict.DistrictName,
+      districtName: selectedDistrict.DistrictName,
       districtId: selectedDistrict.DistrictID,
-      ward: selectedWard.WardName,
+      wardName: selectedWard.WardName,
       wardCode: selectedWard.WardCode,
+      fullAddress: [selectedWard.WardName, selectedDistrict.DistrictName, selectedProvince.ProvinceName].join(', '),
       isDefault,
     };
 

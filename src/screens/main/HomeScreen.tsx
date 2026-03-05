@@ -184,6 +184,7 @@ const HomeScreen = ({ navigation }: any) => {
       const res = await bicycleService.getBicycles({
         sort: '-viewCount',
         limit: 8,
+        status: 'APPROVED',
       });
       setFeaturedBikes(res.data);
     } catch {
@@ -199,6 +200,7 @@ const HomeScreen = ({ navigation }: any) => {
       const res = await bicycleService.getBicycles({
         sort: '-createdAt',
         limit: 10,
+        status: 'APPROVED',
       });
       setRecentBikes(res.data);
     } catch {
