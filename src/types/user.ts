@@ -5,12 +5,13 @@ export interface Address {
   _id?: string;
   label: string;
   street?: string;
-  ward?: string;
+  wardName?: string;
   wardCode?: string;
-  district?: string;
+  districtName?: string;
   districtId?: number;
-  city?: string;
+  provinceName?: string;
   provinceId?: number;
+  fullAddress?: string;
   isDefault?: boolean;
 }
 
