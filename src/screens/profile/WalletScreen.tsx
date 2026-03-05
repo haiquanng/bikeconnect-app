@@ -140,7 +140,7 @@ const WalletScreen = ({ navigation }: any) => {
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <Header navigation={navigation} />
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Balance card */}
         <View style={styles.balanceCard}>
           <Image source={cardImage} style={styles.balanceCardImg} resizeMode="stretch" />
@@ -167,11 +167,27 @@ const WalletScreen = ({ navigation }: any) => {
             </View>
           ) : (
             transactions.map(txn => (
-              <TxnRow key={txn._id} txn={txn} />
+              <TxnRow
+                key={txn._id}
+                txn={txn}
+                onPress={() => navigation.navigate('TransactionDetail', { txn })}
+              />
             ))
           )}
         </View>
       </ScrollView>
+
+      {/* Bottom bar */}
+      <View style={styles.bottomBar}>
+        <TouchableOpacity
+          style={styles.withdrawBtn}
+          onPress={() => navigation.navigate('Withdraw', { availableBalance })}
+          activeOpacity={0.85}
+        >
+          <Icon name="arrow-up-circle-outline" size={20} color={colors.primaryGreen} />
+          <Text style={styles.withdrawBtnText}>Yêu cầu rút tiền</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Deposit Modal */}
       <Modal visible={showDeposit} animationType="slide" transparent onRequestClose={() => setShowDeposit(false)}>
@@ -276,13 +292,13 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   FAILED:  { label: 'Thất bại',   color: '#DC2626' },
 };
 
-const TxnRow = ({ txn }: { txn: WalletTransaction }) => {
+const TxnRow = ({ txn, onPress }: { txn: WalletTransaction; onPress: () => void }) => {
   const isIn = ['DEPOSIT', 'ESCROW_OUT'].includes(txn.type);
   const status = txn.data?.status;
   const isFailed = status === 'FAILED';
   const statusCfg = status ? STATUS_CONFIG[status] : null;
   return (
-    <View style={[styles.txnRow, isFailed && styles.txnRowFailed]}>
+    <TouchableOpacity style={[styles.txnRow, isFailed && styles.txnRowFailed]} onPress={onPress} activeOpacity={0.7}>
       <View style={[styles.txnIcon, isIn && !isFailed ? styles.txnIconIn : styles.txnIconOut]}>
         <Icon
           name={isFailed ? 'close-circle-outline' : isIn ? 'arrow-down-outline' : 'arrow-up-outline'}
@@ -304,7 +320,8 @@ const TxnRow = ({ txn }: { txn: WalletTransaction }) => {
       <Text style={[styles.txnAmount, isFailed ? styles.txnAmountFailed : isIn ? styles.txnAmountIn : styles.txnAmountOut]}>
         {isFailed ? '' : isIn ? '+' : '-'}{formatVND(txn.amount)}
       </Text>
-    </View>
+      <Icon name="chevron-forward" size={16} color={colors.gray[300]} style={{ marginLeft: 4 }} />
+    </TouchableOpacity>
   );
 };
 
@@ -345,6 +362,7 @@ const styles = StyleSheet.create({
   },
   depositBtnText: { fontSize: 15, fontWeight: '700', color: colors.white },
 
+  scrollContent: { paddingBottom: 90 },
   section: { margin: 16, marginTop: 0 },
   sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, marginBottom: 12 },
   emptyTxn: { alignItems: 'center', paddingVertical: 32, gap: 8 },
@@ -396,6 +414,23 @@ const styles = StyleSheet.create({
   },
   amountInputText: { flex: 1, fontSize: 18, fontWeight: '600', color: colors.textPrimary },
   amountCurrency: { fontSize: 18, fontWeight: '600', color: colors.textSecondary },
+  // Bottom bar
+  bottomBar: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    backgroundColor: colors.white,
+    paddingHorizontal: 16, paddingVertical: 12, paddingBottom: 24,
+    borderTopWidth: 1, borderTopColor: colors.gray[100],
+    shadowColor: '#000', shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.06, shadowRadius: 8, elevation: 6,
+  },
+  withdrawBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    height: 48, borderRadius: 12,
+    borderWidth: 1.5, borderColor: colors.primaryGreen,
+    backgroundColor: '#ECFDF5',
+  },
+  withdrawBtnText: { fontSize: 15, fontWeight: '700', color: colors.primaryGreen },
+
   vnpayNote: { fontSize: 12, color: colors.textSecondary, marginBottom: 16 },
   confirmDepositBtn: {
     backgroundColor: colors.primaryGreen, borderRadius: 14,
