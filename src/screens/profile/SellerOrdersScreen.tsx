@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,9 @@ import {
   Image,
   ActivityIndicator,
   RefreshControl,
+  ScrollView,
 } from 'react-native';
+import PagerView from 'react-native-pager-view';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -104,11 +106,7 @@ const OrderCard = ({ order, onPress }: { order: Order; onPress: () => void }) =>
       <View style={styles.cardBody}>
         <View style={styles.bikeImageBox}>
           {order.bicycle.primaryImage ? (
-            <Image
-              source={{ uri: order.bicycle.primaryImage }}
-              style={styles.bikeImage}
-              resizeMode="cover"
-            />
+            <Image source={{ uri: order.bicycle.primaryImage }} style={styles.bikeImage} resizeMode="cover" />
           ) : (
             <View style={styles.bikeImageFallback}>
               <Icon name="bicycle-outline" size={24} color={colors.gray[400]} />
@@ -136,10 +134,14 @@ const OrderCard = ({ order, onPress }: { order: Order; onPress: () => void }) =>
 };
 
 const SellerOrdersScreen = ({ navigation }: any) => {
-  const [activeTab, setActiveTab]     = useState<TabKey>('all');
+  const [activeIndex, setActiveIndex] = useState(0);
   const [orders, setOrders]           = useState<Order[]>([]);
   const [loading, setLoading]         = useState(true);
   const [refreshing, setRefreshing]   = useState(false);
+
+  const pagerRef      = useRef<PagerView>(null);
+  const tabsScrollRef = useRef<ScrollView>(null);
+  const tabPositions  = useRef<number[]>([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -169,9 +171,22 @@ const SellerOrdersScreen = ({ navigation }: any) => {
     finally { setRefreshing(false); }
   };
 
-  const filteredOrders = activeTab === 'all'
-    ? orders
-    : orders.filter(o => (TAB_STATUSES[activeTab] ?? []).includes(o.status));
+  const scrollTabIntoView = (index: number) => {
+    const x = tabPositions.current[index] ?? 0;
+    tabsScrollRef.current?.scrollTo({ x: Math.max(0, x - 60), animated: true });
+  };
+
+  const handleTabPress = (index: number) => {
+    setActiveIndex(index);
+    pagerRef.current?.setPage(index);
+    scrollTabIntoView(index);
+  };
+
+  const handlePageSelected = (e: any) => {
+    const index = e.nativeEvent.position;
+    setActiveIndex(index);
+    scrollTabIntoView(index);
+  };
 
   const pendingCount = orders.filter(o => o.status === 'WAITING_SELLER_CONFIRMATION').length;
 
@@ -194,150 +209,147 @@ const SellerOrdersScreen = ({ navigation }: any) => {
       </View>
 
       {/* Tabs */}
-      <FlatList
-        horizontal
-        data={TABS}
-        keyExtractor={t => t.key}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.tabsContent}
-        style={styles.tabsRow}
-        renderItem={({ item: tab }) => {
-          const isActive = tab.key === activeTab;
-          const isPending = tab.key === 'pending' && pendingCount > 0;
-          return (
-            <TouchableOpacity
-              style={[styles.tab, isActive && styles.tabActive]}
-              onPress={() => setActiveTab(tab.key)}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
-                {tab.label}
-              </Text>
-              {isPending && !isActive && (
-                <View style={styles.tabDot} />
-              )}
-            </TouchableOpacity>
-          );
-        }}
-      />
+      <View style={styles.tabsWrapper}>
+        <ScrollView
+          ref={tabsScrollRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabsContent}
+        >
+          {TABS.map((tab, index) => {
+            const isActive = index === activeIndex;
+            const isPending = tab.key === 'pending' && pendingCount > 0;
+            return (
+              <TouchableOpacity
+                key={tab.key}
+                style={styles.tab}
+                onPress={() => handleTabPress(index)}
+                onLayout={e => { tabPositions.current[index] = e.nativeEvent.layout.x; }}
+                activeOpacity={0.75}
+              >
+                <View style={styles.tabLabelRow}>
+                  <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+                    {tab.label}
+                  </Text>
+                  {isPending && !isActive && <View style={styles.tabDot} />}
+                </View>
+                {isActive && <View style={styles.tabUnderline} />}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+      <View style={styles.divider} />
 
       {/* Content */}
       {loading ? (
-        <View style={styles.loadingBox}>
+        <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.primaryGreen} />
         </View>
       ) : (
-        <FlatList
-          data={filteredOrders}
-          keyExtractor={item => item._id}
-          renderItem={({ item }) => (
-            <OrderCard
-              order={item}
-              onPress={() => navigation.navigate('SellerOrderDetail', { orderId: item._id })}
-            />
-          )}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primaryGreen} />
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyBox}>
-              <Icon name="receipt-outline" size={60} color={colors.gray[300]} />
-              <Text style={styles.emptyText}>Chưa có đơn hàng nào</Text>
-            </View>
-          }
-        />
+        <PagerView
+          ref={pagerRef}
+          style={styles.pager}
+          initialPage={0}
+          onPageSelected={handlePageSelected}
+        >
+          {TABS.map((tab, index) => {
+            const data = tab.key === 'all'
+              ? orders
+              : orders.filter(o => (TAB_STATUSES[tab.key] ?? []).includes(o.status));
+            return (
+              <View key={index} style={styles.page}>
+                <FlatList
+                  data={data}
+                  keyExtractor={item => item._id}
+                  renderItem={({ item }) => (
+                    <OrderCard
+                      order={item}
+                      onPress={() => navigation.navigate('SellerOrderDetail', { orderId: item._id })}
+                    />
+                  )}
+                  contentContainerStyle={styles.listContent}
+                  showsVerticalScrollIndicator={false}
+                  refreshControl={
+                    <RefreshControl
+                      refreshing={refreshing}
+                      onRefresh={onRefresh}
+                      colors={[colors.primaryGreen]}
+                      tintColor={colors.primaryGreen}
+                    />
+                  }
+                  ListEmptyComponent={
+                    <View style={styles.emptyBox}>
+                      <Icon name="receipt-outline" size={60} color={colors.gray[300]} />
+                      <Text style={styles.emptyText}>Chưa có đơn hàng nào</Text>
+                    </View>
+                  }
+                />
+              </View>
+            );
+          })}
+        </PagerView>
       )}
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container:  { flex: 1, backgroundColor: colors.backgroundSecondary },
-  loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  container: { flex: 1, backgroundColor: colors.backgroundSecondary },
+  centered:  { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 14,
     backgroundColor: colors.primaryGreen,
   },
-  backBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    alignItems: 'center', justifyContent: 'center',
-  },
+  backBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   headerTitleBox: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   headerTitle: { fontSize: 18, fontWeight: '700', color: colors.white, textAlign: 'center' },
   headerSpacer: { width: 36 },
   badge: {
-    backgroundColor: colors.error,
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 5,
+    backgroundColor: colors.error, borderRadius: 10,
+    minWidth: 20, height: 20, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5,
   },
   badgeText: { fontSize: 11, fontWeight: '700', color: colors.white },
 
-  tabsRow: { backgroundColor: colors.white, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.gray[200], flexGrow: 0 },
-  tabsContent: { paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
-  tab: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.gray[300],
-    backgroundColor: colors.white,
-  },
-  tabActive: { backgroundColor: colors.primaryGreen, borderColor: colors.primaryGreen },
-  tabText: { fontSize: 13, fontWeight: '500', color: colors.textSecondary },
-  tabTextActive: { color: colors.white },
+  tabsWrapper: { backgroundColor: colors.white },
+  tabsContent: { paddingHorizontal: 12 },
+  tab: { paddingHorizontal: 12, paddingVertical: 14, alignItems: 'center', position: 'relative' },
+  tabLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  tabText: { fontSize: 14, fontWeight: '500', color: colors.textSecondary },
+  tabTextActive: { color: colors.primaryGreen, fontWeight: '700' },
   tabDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.warning },
+  tabUnderline: {
+    position: 'absolute', bottom: 0, left: 12, right: 12,
+    height: 2.5, borderRadius: 2, backgroundColor: colors.primaryGreen,
+  },
+  divider: { height: 1, backgroundColor: colors.gray[100] },
 
+  pager: { flex: 1 },
+  page:  { flex: 1 },
   listContent: { padding: 16, gap: 12, paddingBottom: 40 },
 
   card: {
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.gray[200],
+    backgroundColor: colors.white, borderRadius: 12,
+    overflow: 'hidden', borderWidth: 1, borderColor: colors.gray[200],
   },
   actionBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.warning,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: colors.warning, paddingHorizontal: 14, paddingVertical: 6,
   },
   actionBannerText: { fontSize: 12, fontWeight: '600', color: colors.white },
 
   cardTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 8,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8,
   },
   orderCode: { fontSize: 13, fontWeight: '700', color: colors.textPrimary, letterSpacing: 0.5 },
   statusBadge: { borderRadius: 6, paddingHorizontal: 10, paddingVertical: 3 },
   statusText: { fontSize: 12, fontWeight: '600' },
 
   cardBody: { flexDirection: 'row', gap: 12, paddingHorizontal: 14, paddingBottom: 10 },
-  bikeImageBox: {
-    width: 72, height: 56,
-    borderRadius: 8,
-    backgroundColor: colors.gray[100],
-    overflow: 'hidden',
-  },
+  bikeImageBox: { width: 72, height: 56, borderRadius: 8, backgroundColor: colors.gray[100], overflow: 'hidden' },
   bikeImage: { width: '100%', height: '100%' },
   bikeImageFallback: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   bikeInfo: { flex: 1 },
@@ -347,13 +359,9 @@ const styles = StyleSheet.create({
   bikePrice: { fontSize: 14, fontWeight: '700', color: colors.primaryGreen, marginTop: 4 },
 
   cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.gray[100],
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 14, paddingVertical: 10,
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.gray[100],
   },
   dateText: { fontSize: 12, color: colors.textTertiary },
   footerRight: { flexDirection: 'row', alignItems: 'center', gap: 3 },
