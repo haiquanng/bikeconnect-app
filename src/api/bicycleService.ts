@@ -89,4 +89,33 @@ export const bicycleService = {
     );
     return response.data ?? [];
   },
+
+  async getInspectionReport(bicycleId: string): Promise<InspectionReport> {
+    const response = await apiClient.get<{ success: boolean; data: InspectionReport }>(
+      `/bicycles/${bicycleId}/inspection-report`,
+    );
+    return response.data;
+  },
 };
+
+export interface InspectionReport {
+  _id: string;
+  bicycleId: string;
+  inspectorId: string;
+  assignedBy: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  conditions: {
+    frame: 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR' | 'VERY_POOR';
+    brake: 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR' | 'VERY_POOR';
+    drivetrain: 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR' | 'VERY_POOR';
+    wheels: 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR' | 'VERY_POOR';
+    notes?: string;
+  };
+  overallRating: number;
+  isPassed: boolean;
+  images: string[];
+  notes?: string;
+  completedAt?: string;
+  submittedAt?: string;
+  createdAt: string;
+}
