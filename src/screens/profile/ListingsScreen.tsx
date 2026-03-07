@@ -105,6 +105,7 @@ const ListingsScreen = ({ navigation }: any) => {
     const primaryImage = item.images.find(img => img.isPrimary) ?? item.images[0];
     const canEdit = item.status === 'PENDING';
     const isReserved = item.status === 'RESERVED';
+    const isRejected = item.status === 'REJECTED';
 
     return (
       <TouchableOpacity
@@ -165,6 +166,16 @@ const ListingsScreen = ({ navigation }: any) => {
               >
                 <Icon name="receipt-outline" size={14} color="#1D4ED8" />
                 <Text style={styles.orderBtnText}>Xem đơn hàng</Text>
+              </TouchableOpacity>
+            )}
+            {isRejected && (
+              <TouchableOpacity
+                style={styles.reportBtn}
+                onPress={() => navigation.navigate('InspectionReport', { bicycleId: item._id, bicycleTitle: item.title })}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Icon name="document-text-outline" size={14} color="#991B1B" />
+                <Text style={styles.reportBtnText}>Xem báo cáo</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -473,6 +484,21 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: colors.primaryGreen,
+  },
+  reportBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#991B1B',
+  },
+  reportBtnText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#991B1B',
   },
   emptyContainer: {
     flex: 1,

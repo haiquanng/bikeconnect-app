@@ -103,6 +103,13 @@ const ProfileScreen = ({ navigation }: any) => {
       showChevron: true,
     },
     {
+      id: 'package',
+      title: 'Gói dùng',
+      icon: 'cube-outline',
+      onPress: () => navigation.navigate('Package'),
+      showChevron: true,
+    },
+    {
       id: 'orders',
       title: 'Đơn mua của tôi',
       icon: 'receipt-outline',
