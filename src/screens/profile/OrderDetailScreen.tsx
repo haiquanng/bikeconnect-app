@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useFocusEffect } from '@react-navigation/native';
+import Toast from 'react-native-toast-message';
 import { colors } from '../../theme';
 import { orderService } from '../../api/orderService';
 import { walletService } from '../../api/walletService';
@@ -90,31 +91,63 @@ const SectionCard = ({ title, icon, children }: { title: string; icon: string; c
   </View>
 );
 
+const PRE_PAYMENT_STATUSES = new Set(['RESERVED_FULL', 'RESERVED_DEPOSIT']);
+
 /* ─── Main Screen ─── */
 const OrderDetailScreen = ({ navigation, route }: any) => {
-  const { orderId } = route.params as { orderId: string };
+  const { orderId, paymentResult } = route.params as { orderId: string; paymentResult?: 'success' | 'failed' | 'cancelled' };
 
   const [order, setOrder]     = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
   const [paying, setPaying]   = useState(false);
 
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Show VNPay result toast once on mount
+  useEffect(() => {
+    if (paymentResult === 'success') {
+      Toast.show({ type: 'success', text1: 'Thanh toán VNPay thành công!', text2: 'Đơn hàng đang chờ người bán xác nhận.' });
+    } else if (paymentResult === 'failed') {
+      Toast.show({ type: 'error', text1: 'Thanh toán thất bại', text2: 'Vui lòng thử lại hoặc chọn phương thức khác.' });
+    }
+    return () => {
+      if (retryTimerRef.current) { clearTimeout(retryTimerRef.current); }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const fetchOrder = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await orderService.getOrderById(orderId);
+      setOrder(data);
+      // If we just came from a successful VNPay payment and status hasn't updated yet,
+      // schedule one retry after 3s to wait for IPN processing
+      if (paymentResult === 'success' && PRE_PAYMENT_STATUSES.has(data.status)) {
+        retryTimerRef.current = setTimeout(async () => {
+          try {
+            const refreshed = await orderService.getOrderById(orderId);
+            setOrder(refreshed);
+          } catch { /* silent */ }
+        }, 3000);
+      }
+    } catch {
+      Alert.alert('Lỗi', 'Không thể tải đơn hàng', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  }, [orderId, navigation, paymentResult]);
+
   useFocusEffect(
     useCallback(() => {
-      (async () => {
-        try {
-          setLoading(true);
-          const data = await orderService.getOrderById(orderId);
-          setOrder(data);
-        } catch {
-          Alert.alert('Lỗi', 'Không thể tải đơn hàng', [
-            { text: 'OK', onPress: () => navigation.goBack() },
-          ]);
-        } finally {
-          setLoading(false);
-        }
-      })();
-    }, [navigation, orderId]),
+      fetchOrder();
+      return () => {
+        if (retryTimerRef.current) { clearTimeout(retryTimerRef.current); }
+      };
+    }, [fetchOrder]),
   );
 
   const handleCancel = () => {

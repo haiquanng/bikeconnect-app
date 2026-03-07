@@ -34,6 +34,14 @@ export const orderService = {
     return response.data;
   },
 
+  async payOrderVnpay(orderId: string, bankCode?: string): Promise<{ paymentUrl: string; txnRef: string; amount: number }> {
+    const response = await apiClient.post<{ success: boolean; data: { paymentUrl: string; txnRef: string; amount: number } }>(
+      `/orders/${orderId}/pay-vnpay`,
+      bankCode ? { bankCode } : {},
+    );
+    return response.data;
+  },
+
   async cancelOrder(id: string, reason: string): Promise<Order> {
     const response = await apiClient.put<OrderResponse>(`/orders/${id}/cancel`, { reason });
     return response.data;
