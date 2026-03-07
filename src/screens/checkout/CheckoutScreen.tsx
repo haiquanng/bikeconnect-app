@@ -16,10 +16,9 @@ import type { Address } from '../../types/user';
 import { orderService } from '../../api/orderService';
 import { walletService } from '../../api/walletService';
 import { shippingService } from '../../api/shippingService';
-import { showToast } from '../../utils/toast';
 import StepIndicator from './components/StepIndicator';
 import AddressStep from './steps/AddressStep';
-import ConfirmStep from './steps/ConfirmStep';
+import ConfirmStep, { PaymentMethod } from './steps/ConfirmStep';
 
 export interface CheckoutParams {
   bicycleId: string;
@@ -44,6 +43,15 @@ const CheckoutScreen = ({ navigation, route }: any) => {
   const [shippingFee, setShippingFee]         = useState<number>(30_000);
   const [calculatingFee, setCalculatingFee]   = useState(false);
   const [orderSuccess, setOrderSuccess]       = useState(false);
+  const [paymentMethod, setPaymentMethod]     = useState<PaymentMethod>('WALLET');
+  const [walletBalance, setWalletBalance]     = useState<number>(0);
+
+  // Load wallet balance
+  useEffect(() => {
+    walletService.getMyWallet()
+      .then(w => setWalletBalance(walletService.availableBalance(w)))
+      .catch(() => setWalletBalance(0));
+  }, []);
 
   const scaleAnim   = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -122,36 +130,35 @@ const CheckoutScreen = ({ navigation, route }: any) => {
 
     try {
       setLoading(true);
-      // Bước 1: Tạo đơn → bicycle chuyển RESERVED, order = RESERVED_FULL
+
+      // Bước 1: Tạo đơn → bicycle chuyển RESERVED
       const order = await orderService.createOrder({
         bicycleId:         params.bicycleId,
         paymentType:       'FULL_100',
         shippingAddressId: selectedAddress._id,
       });
 
-      // Bước 2: Kiểm tra ví có đủ không
-      let wallet;
-      try { wallet = await walletService.getMyWallet(); } catch { wallet = null; }
-
-      const total = order.amounts?.total ?? params.bicyclePrice;
-      const available = wallet ? walletService.availableBalance(wallet) : 0;
-
-      if (available >= total) {
-        // Đủ tiền → thanh toán luôn
-        await orderService.payOrder(order._id);
-        setOrderSuccess(true);
+      if (paymentMethod === 'VNPAY') {
+        // VNPay: lấy payment URL → mở WebView
+        const { paymentUrl } = await orderService.payOrderVnpay(order._id);
+        navigation.navigate('VnpayWebView', { paymentUrl, orderId: order._id });
       } else {
-        // Không đủ tiền → ra màn Orders, nhắc nạp tiền
-        const shortage = total - available;
-        showToast('Đặt hàng thành công! Vui lòng nạp tiền để hoàn tất thanh toán.');
-        Alert.alert(
-          'Số dư không đủ',
-          `Cần thêm ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(shortage)} để thanh toán đơn hàng này.`,
-          [
-            { text: 'Nạp tiền ngay', onPress: () => navigation.reset({ index: 1, routes: [{ name: 'Main', params: { screen: 'Shop' } }, { name: 'Orders' }, { name: 'Wallet' }] }) },
-            { text: 'Để sau', onPress: () => navigation.reset({ index: 1, routes: [{ name: 'Main', params: { screen: 'Shop' } }, { name: 'Orders' }] }) },
-          ],
-        );
+        // Wallet: kiểm tra số dư rồi thanh toán
+        const total     = order.amounts?.total ?? params.bicyclePrice;
+        if (walletBalance >= total) {
+          await orderService.payOrder(order._id);
+          setOrderSuccess(true);
+        } else {
+          const shortage = total - walletBalance;
+          Alert.alert(
+            'Số dư không đủ',
+            `Cần thêm ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(shortage)} để thanh toán đơn hàng này.`,
+            [
+              { text: 'Nạp tiền ngay', onPress: () => navigation.reset({ index: 1, routes: [{ name: 'Main', params: { screen: 'Shop' } }, { name: 'Orders' }, { name: 'Wallet' }] }) },
+              { text: 'Để sau', onPress: () => navigation.reset({ index: 1, routes: [{ name: 'Main', params: { screen: 'Shop' } }, { name: 'Orders' }] }) },
+            ],
+          );
+        }
       }
     } catch (e: any) {
       Alert.alert('Lỗi', e?.response?.data?.message ?? 'Không thể tạo đơn hàng');
@@ -215,6 +222,9 @@ const CheckoutScreen = ({ navigation, route }: any) => {
             onConfirm={handleConfirm}
             onBack={() => setStep(1)}
             loading={loading}
+            paymentMethod={paymentMethod}
+            onPaymentMethodChange={setPaymentMethod}
+            walletBalance={walletBalance}
           />
         )
       )}

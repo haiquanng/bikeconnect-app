@@ -60,6 +60,12 @@ const mapListingToFormData = (item: BicycleListing): CreateListingFormData => ({
   title:            item.title,
   description:      item.description ?? '',
   city:             item.location?.city ?? '',
+  provinceId:       item.location?.provinceId ?? null,
+  district:         item.location?.district ?? '',
+  districtId:       item.location?.districtId ?? null,
+  ward:             item.location?.ward ?? '',
+  wardCode:         item.location?.wardCode ?? '',
+  street:           '',
   origin:           '',
   yearManufactured: item.specifications?.yearManufactured
     ? String(item.specifications.yearManufactured)
@@ -135,31 +141,32 @@ const EditListingScreen = ({ navigation, route }: any) => {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-      const specs: Record<string, unknown> = {};
-      if (formData.yearManufactured) { specs.yearManufactured = Number(formData.yearManufactured); }
-      if (formData.frameSize)        { specs.frameSize        = formData.frameSize; }
-      if (formData.frameMaterial)    { specs.frameMaterial    = formData.frameMaterial; }
-      if (formData.color)            { specs.color            = formData.color; }
-
-      const location: Record<string, unknown> = {};
-      if (formData.city) { location.city = formData.city; }
+      // specifications chỉ gửi khi có yearManufactured (required trong schema khi object được gửi)
+      let specifications: Record<string, unknown> | undefined;
+      if (formData.yearManufactured) {
+        specifications = { yearManufactured: Number(formData.yearManufactured) };
+        if (formData.frameSize)     { specifications.frameSize     = formData.frameSize; }
+        if (formData.frameMaterial) { specifications.frameMaterial = formData.frameMaterial; }
+        if (formData.color)         { specifications.color         = formData.color; }
+      }
+      // location KHÔNG cập nhật ở đây vì schema yêu cầu provinceId/districtId/wardCode (GHN)
+      // mà màn edit không thu thập các field đó
 
       const payload: Partial<CreateBicycleRequest> = {
-        title:        formData.title,
-        price:        Number(formData.price),
-        condition:    formData.condition as CreateBicycleRequest['condition'],
-        categoryId:   formData.categoryId,
-        description:  formData.description || undefined,
+        title:         formData.title,
+        price:         Number(formData.price),
+        condition:     formData.condition as CreateBicycleRequest['condition'],
+        categoryId:    formData.categoryId,
+        description:   formData.description || undefined,
         originalPrice: formData.originalPrice ? Number(formData.originalPrice) : undefined,
-        brandId:      formData.brandId || undefined,
-        images:       formData.images.map((img, i) => ({
+        brandId:       formData.brandId || undefined,
+        images:        formData.images.map((img, i) => ({
           url:          img.url,
           mediaType:    img.mediaType,
           isPrimary:    img.isPrimary,
           displayOrder: i,
         })),
-        ...(Object.keys(specs).length > 0     && { specifications: specs }),
-        ...(Object.keys(location).length > 0  && { location }),
+        ...(specifications && { specifications }),
         usageMonths: formData.usageMonths ? Number(formData.usageMonths) : undefined,
       };
 
