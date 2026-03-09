@@ -9,6 +9,7 @@ import {
   Image,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import PagerView from 'react-native-pager-view';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,6 +18,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { bicycleService } from '../../api/bicycleService';
 import { colors } from '../../theme';
 import type { BicycleListing, BicycleStatus } from '../../types/bicycle';
+import { showToast } from '../../utils/toast';
 
 const STATUS_TABS: { label: string; value: BicycleStatus | undefined }[] = [
   { label: 'Tất cả', value: undefined },
@@ -100,10 +102,59 @@ const ListingsScreen = ({ navigation }: any) => {
     tabsScrollRef.current?.scrollTo({ x: Math.max(0, x - 60), animated: true });
   };
 
+  const handleToggleStatus = (item: BicycleListing) => {
+    const isHiding = item.status === 'APPROVED';
+    Alert.alert(
+      isHiding ? 'Ẩn tin đăng' : 'Hiện tin đăng',
+      isHiding ? 'Tin đăng sẽ không còn hiển thị với người mua.' : 'Tin đăng sẽ hiển thị trở lại.',
+      [
+        { text: 'Huỷ', style: 'cancel' },
+        {
+          text: 'Xác nhận',
+          onPress: async () => {
+            try {
+              await bicycleService.updateStatus(item._id, isHiding ? 'HIDDEN' : 'APPROVED');
+              showToast(isHiding ? 'Đã ẩn tin đăng' : 'Đã hiện tin đăng');
+              loadListings(true);
+            } catch {
+              showToast('Có lỗi khi ẩn tin đăng, hãy liên chúng tôi nếu lỗi vẫn tiếp diễn');
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleDelete = (item: BicycleListing) => {
+    Alert.alert(
+      'Xóa tin đăng',
+      'Bạn có chắc muốn xóa tin này? Hành động này không thể hoàn tác.',
+      [
+        { text: 'Huỷ', style: 'cancel' },
+        {
+          text: 'Xóa',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await bicycleService.deleteBicycle(item._id);
+              showToast('Đã xóa tin đăng');
+              loadListings(true);
+            } catch (e: any) {
+              showToast(e?.response?.data?.message ?? 'Không thể xóa tin đăng');
+            }
+          },
+        },
+      ],
+    );
+  };
+
   const renderCard = ({ item }: { item: BicycleListing }) => {
     const status = STATUS_CONFIG[item.status] ?? { label: item.status, color: '#6B7280', bg: '#F3F4F6' };
     const primaryImage = item.images.find(img => img.isPrimary) ?? item.images[0];
     const canEdit = item.status === 'PENDING';
+    const canDelete = item.status === 'PENDING';
+    const canHide = item.status === 'APPROVED';
+    const canShow = item.status === 'HIDDEN';
     const isReserved = item.status === 'RESERVED';
     const isRejected = item.status === 'REJECTED';
 
@@ -148,36 +199,68 @@ const ListingsScreen = ({ navigation }: any) => {
 
           <View style={styles.cardBottom}>
             <Text style={styles.cardDate}>{formatDate(item.createdAt)}</Text>
-            {canEdit && (
-              <TouchableOpacity
-                style={styles.editBtn}
-                onPress={() => navigation.navigate('EditListing', { id: item._id })}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Icon name="create-outline" size={14} color={colors.primaryGreen} />
-                <Text style={styles.editBtnText}>Chỉnh sửa</Text>
-              </TouchableOpacity>
-            )}
-            {isReserved && (
-              <TouchableOpacity
-                style={styles.orderBtn}
-                onPress={() => navigation.navigate('SellerOrders')}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Icon name="receipt-outline" size={14} color="#1D4ED8" />
-                <Text style={styles.orderBtnText}>Xem đơn hàng</Text>
-              </TouchableOpacity>
-            )}
-            {isRejected && (
-              <TouchableOpacity
-                style={styles.reportBtn}
-                onPress={() => navigation.navigate('InspectionReport', { bicycleId: item._id, bicycleTitle: item.title })}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Icon name="document-text-outline" size={14} color="#991B1B" />
-                <Text style={styles.reportBtnText}>Xem báo cáo</Text>
-              </TouchableOpacity>
-            )}
+            <View style={styles.cardActions}>
+              {canEdit && (
+                <TouchableOpacity
+                  style={styles.editBtn}
+                  onPress={() => navigation.navigate('EditListing', { id: item._id })}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Icon name="create-outline" size={14} color={colors.primaryGreen} />
+                  <Text style={styles.editBtnText}>Chỉnh sửa</Text>
+                </TouchableOpacity>
+              )}
+              {canDelete && (
+                <TouchableOpacity
+                  style={styles.deleteBtn}
+                  onPress={() => handleDelete(item)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Icon name="trash-outline" size={14} color="#991B1B" />
+                  <Text style={styles.deleteBtnText}>Xóa</Text>
+                </TouchableOpacity>
+              )}
+              {canHide && (
+                <TouchableOpacity
+                  style={styles.hideBtn}
+                  onPress={() => handleToggleStatus(item)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Icon name="eye-off-outline" size={14} color="#6B7280" />
+                  <Text style={styles.hideBtnText}>Ẩn</Text>
+                </TouchableOpacity>
+              )}
+              {canShow && (
+                <TouchableOpacity
+                  style={styles.showBtn}
+                  onPress={() => handleToggleStatus(item)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Icon name="eye-outline" size={14} color={colors.primaryGreen} />
+                  <Text style={styles.showBtnText}>Hiện</Text>
+                </TouchableOpacity>
+              )}
+              {isReserved && (
+                <TouchableOpacity
+                  style={styles.orderBtn}
+                  onPress={() => navigation.navigate('SellerOrders')}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Icon name="receipt-outline" size={14} color="#1D4ED8" />
+                  <Text style={styles.orderBtnText}>Xem đơn hàng</Text>
+                </TouchableOpacity>
+              )}
+              {isRejected && (
+                <TouchableOpacity
+                  style={styles.reportBtn}
+                  onPress={() => navigation.navigate('InspectionReport', { bicycleId: item._id, bicycleTitle: item.title })}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Icon name="document-text-outline" size={14} color="#991B1B" />
+                  <Text style={styles.reportBtnText}>Xem báo cáo</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         </View>
       </TouchableOpacity>
@@ -455,6 +538,44 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.gray[400],
   },
+  cardActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  deleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#991B1B',
+  },
+  deleteBtnText: { fontSize: 11, fontWeight: '600', color: '#991B1B' },
+  hideBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#6B7280',
+  },
+  hideBtnText: { fontSize: 11, fontWeight: '600', color: '#6B7280' },
+  showBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.primaryGreen,
+  },
+  showBtnText: { fontSize: 11, fontWeight: '600', color: colors.primaryGreen },
   orderBtn: {
     flexDirection: 'row',
     alignItems: 'center',
