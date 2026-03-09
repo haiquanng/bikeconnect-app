@@ -30,6 +30,7 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   REJECTED:                    'Bị từ chối',
   IN_TRANSIT:                  'Đang giao hàng',
   DELIVERED:                   'Đã giao',
+  DEPOSIT_CONFIRMED:           'Chờ thanh toán đủ',
   WAITING_REMAINING_PAYMENT:   'Chờ thanh toán tiếp',
   COMPLETED:                   'Hoàn thành',
   FUNDS_RELEASED:              'Đã hoàn tiền người bán',
@@ -49,6 +50,7 @@ const STATUS_COLOR: Record<OrderStatus, string> = {
   REJECTED:                    colors.error,
   IN_TRANSIT:                  colors.info,
   DELIVERED:                   colors.success,
+  DEPOSIT_CONFIRMED:           colors.warning,
   WAITING_REMAINING_PAYMENT:   colors.warning,
   COMPLETED:                   colors.success,
   FUNDS_RELEASED:              colors.success,
@@ -71,7 +73,7 @@ const TABS: { key: TabKey; label: string }[] = [
 
 const TAB_STATUSES: Record<TabKey, OrderStatus[] | null> = {
   all:       null,
-  pending:   ['WAITING_SELLER_CONFIRMATION', 'CONFIRMED', 'WAITING_FOR_PICKUP', 'RESERVED_FULL', 'RESERVED_DEPOSIT', 'WAITING_REMAINING_PAYMENT'],
+  pending:   ['WAITING_SELLER_CONFIRMATION', 'CONFIRMED', 'WAITING_FOR_PICKUP', 'RESERVED_FULL', 'RESERVED_DEPOSIT', 'DEPOSIT_CONFIRMED', 'WAITING_REMAINING_PAYMENT'],
   shipping:  ['IN_TRANSIT', 'DELIVERED'],
   completed: ['COMPLETED', 'FUNDS_RELEASED'],
   cancelled: ['CANCELLED', 'CANCELLED_BY_BUYER', 'REJECTED', 'DEPOSIT_EXPIRED', 'PAYMENT_TIMEOUT'],

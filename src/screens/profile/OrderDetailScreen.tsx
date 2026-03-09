@@ -30,6 +30,7 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   REJECTED:                    'Bị từ chối',
   IN_TRANSIT:                  'Đang giao hàng',
   DELIVERED:                   'Đã giao hàng',
+  DEPOSIT_CONFIRMED:           'Đang giữ xe — Chờ thanh toán phần còn lại',
   WAITING_REMAINING_PAYMENT:   'Chờ thanh toán phần còn lại',
   COMPLETED:                   'Hoàn thành',
   FUNDS_RELEASED:              'Đã hoàn tiền người bán',
@@ -49,6 +50,7 @@ const STATUS_COLOR: Record<OrderStatus, string> = {
   REJECTED:                    colors.error,
   IN_TRANSIT:                  colors.info,
   DELIVERED:                   colors.success,
+  DEPOSIT_CONFIRMED:           colors.warning,
   WAITING_REMAINING_PAYMENT:   colors.warning,
   COMPLETED:                   colors.success,
   FUNDS_RELEASED:              colors.success,
@@ -92,6 +94,7 @@ const SectionCard = ({ title, icon, children }: { title: string; icon: string; c
 );
 
 const PRE_PAYMENT_STATUSES = new Set(['RESERVED_FULL', 'RESERVED_DEPOSIT']);
+
 
 /* ─── Main Screen ─── */
 const OrderDetailScreen = ({ navigation, route }: any) => {
@@ -181,7 +184,11 @@ const OrderDetailScreen = ({ navigation, route }: any) => {
       // Check wallet balance first
       const wallet = await walletService.getMyWallet();
       const available = walletService.availableBalance(wallet);
-      const needed = order.status === 'RESERVED_DEPOSIT' ? order.amounts.deposit : order.amounts.total;
+      const needed = order.status === 'RESERVED_DEPOSIT'
+        ? order.amounts.deposit
+        : order.paymentType === 'DEPOSIT_10' && order.status === 'WAITING_SELLER_CONFIRMATION'
+          ? order.amounts.total - order.amounts.deposit
+          : order.amounts.total;
 
       if (available < needed) {
         const shortage = needed - available;
@@ -235,7 +242,9 @@ const OrderDetailScreen = ({ navigation, route }: any) => {
 
   const statusColor = STATUS_COLOR[order.status] ?? colors.textSecondary;
   const canCancel   = CANCELLABLE.includes(order.status);
-  const canPay      = ['RESERVED_FULL', 'RESERVED_DEPOSIT', 'WAITING_REMAINING_PAYMENT'].includes(order.status);
+  // TODO: khi BE thêm status DEPOSIT_CONFIRMED, thêm vào canPay + isDepositPendingFull
+  const isDepositPendingFull = order.paymentType === 'DEPOSIT_10' && order.status === 'DEPOSIT_CONFIRMED';
+  const canPay = ['RESERVED_FULL', 'RESERVED_DEPOSIT', 'WAITING_REMAINING_PAYMENT', 'DEPOSIT_CONFIRMED'].includes(order.status);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -262,6 +271,26 @@ const OrderDetailScreen = ({ navigation, route }: any) => {
             <Text style={styles.orderCode}>{order.orderCode}</Text>
           </View>
         </View>
+
+        {/* Deposit info banner */}
+        {order.paymentType === 'DEPOSIT_10' &&
+          order.status === 'WAITING_SELLER_CONFIRMATION' && (
+          <View style={styles.depositBanner}>
+            <View style={styles.depositRow}>
+              <Text style={styles.depositLabel}>Đã đặt cọc</Text>
+              <Text style={styles.depositPaid}>{formatPrice(order.amounts.deposit)}</Text>
+            </View>
+            <View style={styles.depositRow}>
+              <Text style={styles.depositLabel}>Còn lại cần thanh toán</Text>
+              <Text style={styles.depositRemain}>
+                {formatPrice(order.amounts.total - order.amounts.deposit)}
+              </Text>
+            </View>
+            <Text style={styles.depositNote}>
+              Thanh toán phần còn lại sau khi nhận hàng.
+            </Text>
+          </View>
+        )}
 
         {/* Bike info */}
         <SectionCard title="Sản phẩm" icon="bicycle-outline">
@@ -335,6 +364,16 @@ const OrderDetailScreen = ({ navigation, route }: any) => {
         </SectionCard>
       </ScrollView>
 
+      {/* 2-day warning — shown for all deposit cases needing payment */}
+      {(isDepositPendingFull || order.status === 'WAITING_REMAINING_PAYMENT') && (
+        <View style={styles.warningBanner}>
+          <Icon name="warning-outline" size={16} color="#92400e" style={{ marginTop: 1 }} />
+          <Text style={styles.warningText}>
+            Lưu ý: Nếu trong 2 ngày bạn không thanh toán đủ, tiền cọc sẽ không được hoàn lại và chúng tôi không chịu trách nhiệm.
+          </Text>
+        </View>
+      )}
+
       {/* Buyer action bar */}
       {(canPay || canCancel) && (
         <View style={styles.bottomBar}>
@@ -358,7 +397,11 @@ const OrderDetailScreen = ({ navigation, route }: any) => {
             >
               {paying
                 ? <ActivityIndicator color={colors.white} />
-                : <Text style={styles.payBtnText}>Thanh toán từ ví</Text>
+                : <Text style={styles.payBtnText}>
+                    {(isDepositPendingFull || order.status === 'WAITING_REMAINING_PAYMENT')
+                      ? 'Thanh toán phần còn lại'
+                      : 'Thanh toán từ ví'}
+                  </Text>
               }
             </TouchableOpacity>
           )}
@@ -449,6 +492,67 @@ const styles = StyleSheet.create({
   bold:      { fontWeight: '700', fontSize: 14, color: colors.textPrimary },
   divider:   { height: 1, backgroundColor: colors.gray[100], marginVertical: 4 },
 
+  depositBanner: {
+    backgroundColor: '#f0fdf4',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+    gap: 8,
+  },
+  depositRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  depositLabel: { fontSize: 13, color: colors.textSecondary },
+  depositPaid:  { fontSize: 13, fontWeight: '700', color: colors.primaryGreen },
+  depositRemain:{ fontSize: 13, fontWeight: '700', color: colors.warning },
+  depositNote:  { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+
+  depositReminderBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fffbeb',
+    borderTopWidth: 1,
+    borderTopColor: '#fde68a',
+  },
+  depositReminderText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#92400e',
+    lineHeight: 18,
+  },
+  cancelBtnSmall: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: colors.error,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelBtnSmallText: { fontSize: 13, fontWeight: '600', color: colors.error },
+
+  warningBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#fffbeb',
+    borderTopWidth: 1,
+    borderTopColor: '#fde68a',
+  },
+  warningText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#92400e',
+    lineHeight: 18,
+  },
   bottomBar: {
     flexDirection: 'row',
     gap: 10,

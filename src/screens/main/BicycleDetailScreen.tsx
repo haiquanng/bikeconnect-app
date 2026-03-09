@@ -219,14 +219,25 @@ const BicycleDetailScreen = ({ navigation, route }: any) => {
         isSeller={isSeller}
         bottomInset={insets.bottom}
         onViewListings={() => navigation.navigate('Listings')}
-        onDeposit={() => {}}
+        onDeposit={() =>
+          navigation.navigate('Checkout', {
+            bicycleId:          item._id,
+            bicycleTitle:       item.title,
+            bicyclePrice:       item.price,
+            primaryImage:       primaryImg?.url,
+            condition:          item.condition,
+            fromDistrictId:     item.location?.districtId,
+            fromWardCode:       item.location?.wardCode,
+            initialPaymentType: 'DEPOSIT_10',
+          })
+        }
         onBuy={() =>
           navigation.navigate('Checkout', {
-            bicycleId:        item._id,
-            bicycleTitle:     item.title,
-            bicyclePrice:     item.price,
-            primaryImage:     primaryImg?.url,
-            condition:        item.condition,
+            bicycleId:      item._id,
+            bicycleTitle:   item.title,
+            bicyclePrice:   item.price,
+            primaryImage:   primaryImg?.url,
+            condition:      item.condition,
             fromDistrictId: item.location?.districtId,
             fromWardCode:   item.location?.wardCode,
           })
