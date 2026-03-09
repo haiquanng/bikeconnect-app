@@ -101,7 +101,7 @@ const ListingsScreen = ({ navigation }: any) => {
   };
 
   const renderCard = ({ item }: { item: BicycleListing }) => {
-    const status = STATUS_CONFIG[item.status];
+    const status = STATUS_CONFIG[item.status] ?? { label: item.status, color: '#6B7280', bg: '#F3F4F6' };
     const primaryImage = item.images.find(img => img.isPrimary) ?? item.images[0];
     const canEdit = item.status === 'PENDING';
     const isReserved = item.status === 'RESERVED';
