@@ -19,7 +19,7 @@ import type { WebViewNavigation } from 'react-native-webview';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors } from '../../theme';
-import { walletService, Wallet, WalletTransaction } from '../../api/walletService';
+import { walletService, Wallet, WalletTransaction, WithdrawRequest } from '../../api/walletService';
 
 const formatVND = (n: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
@@ -56,6 +56,8 @@ const WalletScreen = ({ navigation }: any) => {
   );
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
+  const [withdrawRequests, setWithdrawRequests] = useState<WithdrawRequest[]>([]);
+  const [activeTab, setActiveTab] = useState<'transactions' | 'withdrawals'>('transactions');
   const [loading, setLoading] = useState(true);
 
   // Deposit modal
@@ -70,12 +72,14 @@ const WalletScreen = ({ navigation }: any) => {
   const load = useCallback(async (silent = false) => {
     try {
       if (!silent) { setLoading(true); }
-      const [w, t] = await Promise.all([
+      const [w, t, wr] = await Promise.all([
         walletService.getMyWallet(),
         walletService.getTransactions(1, 20),
+        walletService.getWithdrawRequests(),
       ]);
       setWallet(w);
       setTransactions(t.transactions);
+      setWithdrawRequests(wr);
     } catch {
       // ignore
     } finally {
@@ -157,22 +161,52 @@ const WalletScreen = ({ navigation }: any) => {
           </View>
         </View>
 
-        {/* Transactions */}
+        {/* Tab bar */}
+        <View style={styles.tabBar}>
+          <TouchableOpacity
+            style={[styles.tabItem, activeTab === 'transactions' && styles.tabItemActive]}
+            onPress={() => setActiveTab('transactions')}
+          >
+            <Text style={[styles.tabText, activeTab === 'transactions' && styles.tabTextActive]}>
+              Giao dịch
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabItem, activeTab === 'withdrawals' && styles.tabItemActive]}
+            onPress={() => setActiveTab('withdrawals')}
+          >
+            <Text style={[styles.tabText, activeTab === 'withdrawals' && styles.tabTextActive]}>
+              Yêu cầu rút tiền
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Tab content */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Lịch sử giao dịch</Text>
-          {transactions.length === 0 ? (
-            <View style={styles.emptyTxn}>
-              <Icon name="receipt-outline" size={40} color={colors.gray[300]} />
-              <Text style={styles.emptyTxnText}>Chưa có giao dịch</Text>
-            </View>
+          {activeTab === 'transactions' ? (
+            transactions.length === 0 ? (
+              <View style={styles.emptyTxn}>
+                <Icon name="receipt-outline" size={40} color={colors.gray[300]} />
+                <Text style={styles.emptyTxnText}>Chưa có giao dịch</Text>
+              </View>
+            ) : (
+              transactions.map(txn => (
+                <TxnRow
+                  key={txn._id}
+                  txn={txn}
+                  onPress={() => navigation.navigate('TransactionDetail', { txn })}
+                />
+              ))
+            )
           ) : (
-            transactions.map(txn => (
-              <TxnRow
-                key={txn._id}
-                txn={txn}
-                onPress={() => navigation.navigate('TransactionDetail', { txn })}
-              />
-            ))
+            withdrawRequests.length === 0 ? (
+              <View style={styles.emptyTxn}>
+                <Icon name="arrow-up-circle-outline" size={40} color={colors.gray[300]} />
+                <Text style={styles.emptyTxnText}>Chưa có yêu cầu rút tiền</Text>
+              </View>
+            ) : (
+              withdrawRequests.map(req => <WithdrawRow key={req._id} req={req} />)
+            )
           )}
         </View>
       </ScrollView>
@@ -325,6 +359,39 @@ const TxnRow = ({ txn, onPress }: { txn: WalletTransaction; onPress: () => void 
   );
 };
 
+const WR_STATUS_CONFIG: Record<WithdrawRequest['status'], { label: string; color: string; bg: string }> = {
+  PENDING:   { label: 'Đang xử lý', color: '#D97706', bg: '#FEF3C7' },
+  APPROVED:  { label: 'Đã duyệt',   color: '#065F46', bg: '#D1FAE5' },
+  REJECTED:  { label: 'Bị từ chối', color: '#991B1B', bg: '#FEE2E2' },
+  COMPLETED: { label: 'Hoàn tất',   color: '#1D4ED8', bg: '#DBEAFE' },
+};
+
+const WithdrawRow = ({ req }: { req: WithdrawRequest }) => {
+  const cfg = WR_STATUS_CONFIG[req.status] ?? { label: req.status, color: '#6B7280', bg: '#F3F4F6' };
+  return (
+    <View style={styles.txnRow}>
+      <View style={[styles.txnIcon, styles.txnIconOut]}>
+        <Icon name="arrow-up-outline" size={18} color="#991B1B" />
+      </View>
+      <View style={styles.txnInfo}>
+        <Text style={styles.txnLabel}>
+          Rút tiền — {req.bankInfo.bankName}
+        </Text>
+        <Text style={styles.txnDate}>{formatDate(req.createdAt)}</Text>
+        {req.rejectedReason ? (
+          <Text style={styles.txnStatusFailed} numberOfLines={1}>Lý do: {req.rejectedReason}</Text>
+        ) : null}
+      </View>
+      <View style={{ alignItems: 'flex-end', gap: 4 }}>
+        <Text style={styles.txnAmountOut}>-{formatVND(req.amount)}</Text>
+        <View style={[styles.wrBadge, { backgroundColor: cfg.bg }]}>
+          <Text style={[styles.wrBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
+        </View>
+      </View>
+    </View>
+  );
+};
+
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.backgroundSecondary },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
@@ -363,6 +430,22 @@ const styles = StyleSheet.create({
   depositBtnText: { fontSize: 15, fontWeight: '700', color: colors.white },
 
   scrollContent: { paddingBottom: 90 },
+
+  tabBar: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginBottom: 12,
+    backgroundColor: colors.gray[100],
+    borderRadius: 10,
+    padding: 3,
+  },
+  tabItem: {
+    flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center',
+  },
+  tabItemActive: { backgroundColor: colors.white },
+  tabText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+  tabTextActive: { color: colors.primaryGreen },
+
   section: { margin: 16, marginTop: 0 },
   sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, marginBottom: 12 },
   emptyTxn: { alignItems: 'center', paddingVertical: 32, gap: 8 },
@@ -430,6 +513,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#ECFDF5',
   },
   withdrawBtnText: { fontSize: 15, fontWeight: '700', color: colors.primaryGreen },
+
+  wrBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  wrBadgeText: { fontSize: 11, fontWeight: '600' },
 
   vnpayNote: { fontSize: 12, color: colors.textSecondary, marginBottom: 16 },
   confirmDepositBtn: {

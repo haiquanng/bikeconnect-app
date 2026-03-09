@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Linking,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -55,20 +56,29 @@ const PackageCard = ({ pkg, isActive }: { pkg: Package; isActive: boolean }) => 
   </View>
 );
 
+const formatDate = (s: string) => {
+  const d = new Date(s);
+  return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+};
+
 const PackageScreen = ({ navigation }: any) => {
   const [activePackage, setActivePackage] = useState<UserPackage | null>(null);
   const [packages, setPackages]           = useState<Package[]>([]);
+  const [myPackages, setMyPackages]       = useState<UserPackage[]>([]);
   const [loading, setLoading]             = useState(true);
   const [refreshing, setRefreshing]       = useState(false);
+  const [cancelling, setCancelling]       = useState(false);
 
   const loadData = useCallback(async () => {
     try {
-      const [active, pkgs] = await Promise.all([
+      const [active, pkgs, history] = await Promise.all([
         packageService.getActivePackage(),
         packageService.getPackages(),
+        packageService.getMyPackages(),
       ]);
       setActivePackage(active);
       setPackages(pkgs);
+      setMyPackages(history);
     } catch {
       // ignore
     } finally {
@@ -88,6 +98,31 @@ const PackageScreen = ({ navigation }: any) => {
 
   const handleBuy = () => {
     Linking.openURL('https://xedap.store/packages');
+  };
+
+  const handleCancel = (pkg: UserPackage) => {
+    Alert.alert(
+      'Huỷ gói',
+      `Bạn có chắc muốn huỷ gói "${pkg.package.name}"?`,
+      [
+        { text: 'Không', style: 'cancel' },
+        {
+          text: 'Huỷ gói',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setCancelling(true);
+              await packageService.cancelPackage(pkg._id);
+              await loadData();
+            } catch (e: any) {
+              Alert.alert('Lỗi', e?.response?.data?.message ?? 'Không thể huỷ gói');
+            } finally {
+              setCancelling(false);
+            }
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -133,6 +168,19 @@ const PackageScreen = ({ navigation }: any) => {
                   </Text>
                 </View>
               </View>
+              {activePackage.status === 'ACTIVE' &&
+                (packages.find(p => p._id === activePackage.package._id)?.price ?? 0) > 0 && (
+                <TouchableOpacity
+                  style={styles.cancelPkgBtn}
+                  onPress={() => handleCancel(activePackage)}
+                  disabled={cancelling}
+                >
+                  {cancelling
+                    ? <ActivityIndicator size="small" color="#991B1B" />
+                    : <Text style={styles.cancelPkgBtnText}>Huỷ gói</Text>
+                  }
+                </TouchableOpacity>
+              )}
             </View>
           ) : (
             <View style={styles.noPackageCard}>
@@ -188,6 +236,29 @@ const PackageScreen = ({ navigation }: any) => {
                   pkg={pkg}
                   isActive={activePackage?.packageId === pkg._id || activePackage?.package._id === pkg._id}
                 />
+              ))}
+            </View>
+          )}
+
+          {/* Purchase history */}
+          {myPackages.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Lịch sử mua gói</Text>
+              {myPackages.map(up => (
+                <View key={up._id} style={styles.historyRow}>
+                  <View style={styles.historyLeft}>
+                    <Text style={styles.historyName}>{up.package.name}</Text>
+                    <Text style={styles.historyDate}>{formatDate(up.purchasedAt ?? up.createdAt)}</Text>
+                  </View>
+                  <View style={styles.historyRight}>
+                    <View style={[styles.historyBadge, { backgroundColor: up.status === 'ACTIVE' ? '#D1FAE5' : up.status === 'CANCELLED' ? '#FEE2E2' : '#F3F4F6' }]}>
+                      <Text style={[styles.historyBadgeText, { color: STATUS_COLOR[up.status] }]}>
+                        {STATUS_LABEL[up.status]}
+                      </Text>
+                    </View>
+                    <Text style={styles.historyUsage}>{up.postedUsed}/{up.package.postLimit} tin</Text>
+                  </View>
+                </View>
               ))}
             </View>
           )}
@@ -290,6 +361,25 @@ const styles = StyleSheet.create({
   pkgFeature: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   pkgFeatureText: { fontSize: 13, color: colors.textSecondary },
   pkgFeatureBold: { fontWeight: '700', color: colors.textPrimary },
+
+  cancelPkgBtn: {
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8,
+    borderWidth: 1, borderColor: '#991B1B',
+  },
+  cancelPkgBtnText: { fontSize: 12, fontWeight: '600', color: '#991B1B' },
+
+  historyRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: colors.white, borderRadius: 10, padding: 12,
+    borderWidth: 1, borderColor: colors.gray[200],
+  },
+  historyLeft: { flex: 1, gap: 2 },
+  historyName: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
+  historyDate: { fontSize: 12, color: colors.textSecondary },
+  historyRight: { alignItems: 'flex-end', gap: 4 },
+  historyBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  historyBadgeText: { fontSize: 11, fontWeight: '600' },
+  historyUsage: { fontSize: 12, color: colors.textSecondary },
 
   scrollSpacer: { height: 80 },
 

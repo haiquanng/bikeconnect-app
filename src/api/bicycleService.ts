@@ -90,6 +90,15 @@ export const bicycleService = {
     return response.data ?? [];
   },
 
+  async deleteBicycle(id: string): Promise<void> {
+    await apiClient.delete(`/bicycles/${id}`);
+  },
+
+  async updateStatus(id: string, status: BicycleStatus): Promise<BicycleListing> {
+    const response = await apiClient.put<BicycleDetailResponse>(`/bicycles/${id}/status`, { status });
+    return response.data;
+  },
+
   async getInspectionReport(bicycleId: string): Promise<InspectionReport> {
     const response = await apiClient.get<{ success: boolean; data: InspectionReport }>(
       `/bicycles/${bicycleId}/inspection-report`,

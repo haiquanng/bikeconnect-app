@@ -38,6 +38,15 @@ export const packageService = {
     return res.data ?? [];
   },
 
+  async getMyPackages(): Promise<UserPackage[]> {
+    const res = await apiClient.get<{ success: boolean; data: UserPackage[] }>('/users/packages');
+    return res.data ?? [];
+  },
+
+  async cancelPackage(id: string): Promise<void> {
+    await apiClient.patch(`/users/packages/${id}`, { status: 'CANCELLED' });
+  },
+
   async getActivePackage(): Promise<UserPackage | null> {
     try {
       const res = await apiClient.get<{ success: boolean; data: UserPackage }>(

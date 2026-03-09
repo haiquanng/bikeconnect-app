@@ -37,7 +37,42 @@ import PackageScreen from '../screens/profile/PackageScreen';
 import VnpayWebViewScreen from '../screens/checkout/VnpayWebViewScreen';
 import CreateListingScreen from '../screens/sell/CreateListingScreen';
 import EditListingScreen from '../screens/sell/EditListingScreen';
-import Toast from 'react-native-toast-message';
+import Toast, { BaseToast, ErrorToast, BaseToastProps } from 'react-native-toast-message';
+import { StyleSheet } from 'react-native';
+
+const toastStyles = StyleSheet.create({
+  success: { borderLeftColor: '#10B981', minHeight: 56 },
+  error: { borderLeftColor: '#EF4444', minHeight: 56 },
+  info: { borderLeftColor: '#3B82F6', minHeight: 56 },
+  text1: { fontSize: 14, fontWeight: '600', flexShrink: 1 },
+});
+
+const toastConfig = {
+  success: (props: BaseToastProps) => (
+    <BaseToast
+      {...props}
+      style={toastStyles.success}
+      text1Style={toastStyles.text1}
+      text1NumberOfLines={0}
+    />
+  ),
+  error: (props: BaseToastProps) => (
+    <ErrorToast
+      {...props}
+      style={toastStyles.error}
+      text1Style={toastStyles.text1}
+      text1NumberOfLines={0}
+    />
+  ),
+  info: (props: BaseToastProps) => (
+    <BaseToast
+      {...props}
+      style={toastStyles.info}
+      text1Style={toastStyles.text1}
+      text1NumberOfLines={0}
+    />
+  ),
+};
 
 const Stack = createNativeStackNavigator();
 
@@ -102,7 +137,7 @@ const AppNavigator = () => {
             <Stack.Screen name="VnpayWebView" component={VnpayWebViewScreen} />
           </Stack.Navigator>
         </NavigationContainer>
-        <Toast />
+        <Toast config={toastConfig} />
       </>
     </Provider>
   );
