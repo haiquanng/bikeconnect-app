@@ -30,7 +30,7 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   REJECTED:                    'Bị từ chối',
   IN_TRANSIT:                  'Đang giao hàng',
   DELIVERED:                   'Đã giao hàng',
-  DEPOSIT_CONFIRMED:           'Đã xác nhận — Cần thanh toán phần còn lại',
+  DEPOSIT_CONFIRMED:           'Đang giữ xe — Chờ thanh toán phần còn lại',
   WAITING_REMAINING_PAYMENT:   'Chờ thanh toán phần còn lại',
   COMPLETED:                   'Hoàn thành',
   FUNDS_RELEASED:              'Đã hoàn tiền người bán',
@@ -95,15 +95,6 @@ const SectionCard = ({ title, icon, children }: { title: string; icon: string; c
 
 const PRE_PAYMENT_STATUSES = new Set(['RESERVED_FULL', 'RESERVED_DEPOSIT']);
 
-const getStatusLabel = (order: Order): string => {
-  if (
-    order.paymentType === 'DEPOSIT_10' &&
-    order.status === 'WAITING_SELLER_CONFIRMATION'
-  ) {
-    return 'Đã đặt cọc — Chờ người bán xác nhận';
-  }
-  return STATUS_LABEL[order.status] ?? order.status;
-};
 
 /* ─── Main Screen ─── */
 const OrderDetailScreen = ({ navigation, route }: any) => {
@@ -275,7 +266,7 @@ const OrderDetailScreen = ({ navigation, route }: any) => {
           <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
           <View style={styles.statusTextBox}>
             <Text style={[styles.statusLabel, { color: statusColor }]}>
-              {getStatusLabel(order)}
+              {STATUS_LABEL[order.status] ?? order.status}
             </Text>
             <Text style={styles.orderCode}>{order.orderCode}</Text>
           </View>
