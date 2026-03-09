@@ -78,6 +78,13 @@ export const walletService = {
     return res.data;
   },
 
+  async getWithdrawRequests(): Promise<WithdrawRequest[]> {
+    const res = await apiClient.get<{ success: boolean; data: { withdrawRequests: WithdrawRequest[] } }>(
+      '/wallets/withdraw-requests',
+    );
+    return res.data?.withdrawRequests ?? [];
+  },
+
   availableBalance(wallet: Wallet): number {
     return wallet.totalEarn - wallet.totalWithdrawn - wallet.frozenBalance;
   },
