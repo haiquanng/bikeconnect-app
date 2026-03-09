@@ -6,7 +6,6 @@ import {
   StyleSheet,
 } from 'react-native';
 import { colors } from '../../../theme';
-import { showToast } from '../../../utils/toast';
 
 interface Props {
   isSeller: boolean;
@@ -26,9 +25,9 @@ const BottomBar = ({ isSeller, bottomInset, onViewListings, onDeposit, onBuy }: 
       <>
         <TouchableOpacity
           style={styles.secondaryBtn}
-          onPress={() => { onDeposit(); showToast('Đang phát triển'); }}
+          onPress={onDeposit}
         >
-          <Text style={styles.secondaryBtnText}>Đặt cọc</Text>
+          <Text style={styles.secondaryBtnText}>Đặt cọc 10%</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.primaryBtn} onPress={onBuy}>
           <Text style={styles.primaryBtnText}>Mua ngay</Text>

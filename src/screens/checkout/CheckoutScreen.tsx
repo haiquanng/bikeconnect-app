@@ -16,6 +16,7 @@ import type { Address } from '../../types/user';
 import { orderService } from '../../api/orderService';
 import { walletService } from '../../api/walletService';
 import { shippingService } from '../../api/shippingService';
+import type { PaymentType } from '../../types/order';
 import StepIndicator from './components/StepIndicator';
 import AddressStep from './steps/AddressStep';
 import ConfirmStep, { PaymentMethod } from './steps/ConfirmStep';
@@ -29,6 +30,7 @@ export interface CheckoutParams {
   // Địa chỉ của xe (để tính phí ship GHN)
   fromDistrictId?: number;
   fromWardCode?: string;
+  initialPaymentType?: PaymentType;
 }
 
 const STEPS = ['Địa chỉ', 'Thanh toán'];
@@ -44,6 +46,7 @@ const CheckoutScreen = ({ navigation, route }: any) => {
   const [calculatingFee, setCalculatingFee]   = useState(false);
   const [orderSuccess, setOrderSuccess]       = useState(false);
   const [paymentMethod, setPaymentMethod]     = useState<PaymentMethod>('WALLET');
+  const [paymentType, setPaymentType]         = useState<PaymentType>(params.initialPaymentType ?? 'FULL_100');
   const [walletBalance, setWalletBalance]     = useState<number>(0);
 
   // Load wallet balance
@@ -134,7 +137,7 @@ const CheckoutScreen = ({ navigation, route }: any) => {
       // Bước 1: Tạo đơn → bicycle chuyển RESERVED
       const order = await orderService.createOrder({
         bicycleId:         params.bicycleId,
-        paymentType:       'FULL_100',
+        paymentType,
         shippingAddressId: selectedAddress._id,
       });
 
@@ -144,12 +147,14 @@ const CheckoutScreen = ({ navigation, route }: any) => {
         navigation.navigate('VnpayWebView', { paymentUrl, orderId: order._id });
       } else {
         // Wallet: kiểm tra số dư rồi thanh toán
-        const total     = order.amounts?.total ?? params.bicyclePrice;
-        if (walletBalance >= total) {
+        const needed = paymentType === 'DEPOSIT_10'
+          ? (order.amounts?.deposit ?? Math.round((order.amounts?.total ?? params.bicyclePrice) * 0.1))
+          : (order.amounts?.total ?? params.bicyclePrice);
+        if (walletBalance >= needed) {
           await orderService.payOrder(order._id);
           setOrderSuccess(true);
         } else {
-          const shortage = total - walletBalance;
+          const shortage = needed - walletBalance;
           Alert.alert(
             'Số dư không đủ',
             `Cần thêm ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(shortage)} để thanh toán đơn hàng này.`,
@@ -225,6 +230,8 @@ const CheckoutScreen = ({ navigation, route }: any) => {
             paymentMethod={paymentMethod}
             onPaymentMethodChange={setPaymentMethod}
             walletBalance={walletBalance}
+            paymentType={paymentType}
+            onPaymentTypeChange={setPaymentType}
           />
         )
       )}
