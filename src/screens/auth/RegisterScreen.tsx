@@ -10,16 +10,19 @@ import {
   Platform,
   ScrollView,
   Alert,
-  SafeAreaView,
   Keyboard,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { colors } from '../../theme';
 import { Button } from '../../components/atoms';
-import { SuccessModal } from '../../components/ui';
 import { authService } from '../../api/authService';
+import { useAppDispatch } from '../../redux/hooks';
+import { loginSuccess } from '../../redux/auth/authSlice';
+import { authStorage } from '../../utils/authStorage';
 
 const RegisterScreen = ({ navigation }: any) => {
+  const dispatch = useAppDispatch();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -28,7 +31,6 @@ const RegisterScreen = ({ navigation }: any) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
 
   const validateEmail = (emailInput: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -47,12 +49,13 @@ const RegisterScreen = ({ navigation }: any) => {
       return;
     }
 
-    if (!email.trim()) {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
       Alert.alert('Lỗi', 'Vui lòng nhập email');
       return;
     }
 
-    if (!validateEmail(email)) {
+    if (!validateEmail(trimmedEmail)) {
       Alert.alert('Lỗi', 'Email không hợp lệ');
       return;
     }
@@ -67,8 +70,8 @@ const RegisterScreen = ({ navigation }: any) => {
       return;
     }
 
-    if (password.length < 8) {
-      Alert.alert('Lỗi', 'Mật khẩu phải có ít nhất 8 ký tự');
+    if (password.length < 6) {
+      Alert.alert('Lỗi', 'Mật khẩu phải có ít nhất 6 ký tự');
       return;
     }
 
@@ -80,49 +83,46 @@ const RegisterScreen = ({ navigation }: any) => {
     setLoading(true);
 
     try {
-      const userData = {
-        fullName,
-        email,
-        phone: phone || '',
+      const response = await authService.register({
+        email: trimmedEmail,
         password,
-        avatar:
-          'https://ui-avatars.com/api/?name=' + encodeURIComponent(fullName),
-        role: ['BUYER'],
-        address: [],
-        dob: '',
-        emailNotification: true,
-        pushNotification: true,
-        gender: 0,
-        isVerified: false,
-        status: 'ACTIVE',
+        fullName: fullName.trim(),
+      });
+
+      // User is authenticated immediately after registration
+      const basicUser = {
+        id: response.data.id,
+        email: response.data.email,
+        fullName: response.data.fullName,
+        avatarUrl: response.data.avatarUrl,
+        roles: response.data.roles,
+        isVerified: response.data.isVerified,
+        authProvider: response.data.authProvider,
+        reputationScore: 0,
+        isActive: true,
+      };
+      const tokens = {
+        idToken: response.data.idToken,
+        refreshToken: response.data.refreshToken,
+        expiresIn: response.data.expiresIn,
       };
 
-      await authService.register(userData);
+      dispatch(loginSuccess({ user: basicUser, ...tokens }));
+      authStorage.save({ refreshToken: tokens.refreshToken, user: basicUser }).catch(() => {});
 
-      // Dismiss keyboard and stop loading
       setLoading(false);
       Keyboard.dismiss();
 
-      // Show success modal
-      setTimeout(() => {
-        setShowSuccess(true);
-      }, 100);
+      navigation.replace('VerifyEmail', { email: trimmedEmail });
     } catch (error: any) {
       console.log('Register error:', error);
       setLoading(false);
       Keyboard.dismiss();
 
-      // Show error alert
       setTimeout(() => {
         Alert.alert('Đăng ký thất bại', error.message || 'Đã xảy ra lỗi');
       }, 100);
     }
-  };
-
-  const handleSuccessClose = () => {
-    setShowSuccess(false);
-    // Navigate to Login screen
-    navigation.navigate('Login');
   };
 
   return (
@@ -277,13 +277,6 @@ const RegisterScreen = ({ navigation }: any) => {
           </TouchableOpacity>
         </ScrollView>
 
-        {/* Success Modal */}
-        <SuccessModal
-          visible={showSuccess}
-          onClose={handleSuccessClose}
-          title="Đăng ký thành công"
-          subtitle="Vui lòng đăng nhập để tiếp tục"
-        />
       </SafeAreaView>
     </KeyboardAvoidingView>
   );

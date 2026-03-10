@@ -3,34 +3,52 @@ import { View, StyleSheet, Image, Animated } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { colors, gradients } from '../../theme';
 import { useNavigation } from '@react-navigation/native';
+import { useAppDispatch } from '../../redux/hooks';
+import { loginSuccess, updateUser } from '../../redux/auth/authSlice';
+import { authService } from '../../api/authService';
+import { authStorage } from '../../utils/authStorage';
 
 const SplashScreen = () => {
   const navigation = useNavigation();
-  const slideAnim = useRef(new Animated.Value(-300)).current; // Start from left off-screen
-  const fadeAnim = useRef(new Animated.Value(0)).current; // Start transparent
+  const dispatch = useAppDispatch();
+  const slideAnim = useRef(new Animated.Value(-300)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Start slide and fade animation
     Animated.parallel([
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 800, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
     ]).start();
 
-    // Navigate to main screen after 2 seconds
-    const timer = setTimeout(() => {
+    const checkAuth = async () => {
+      try {
+        const saved = await authStorage.load();
+        if (saved?.refreshToken) {
+          const tokens = await authService.refreshToken(saved.refreshToken);
+          dispatch(loginSuccess({
+            user: saved.user,
+            idToken: tokens.idToken,
+            refreshToken: tokens.refreshToken,
+            expiresIn: tokens.expiresIn,
+          }));
+          // Sync fresh profile in background without blocking navigation
+          authService.getProfile().then(profile => {
+            const merged = { ...saved.user, ...profile };
+            dispatch(updateUser(merged));
+            authStorage.save({ refreshToken: tokens.refreshToken, user: merged }).catch(() => {});
+          }).catch(() => {});
+          navigation.navigate('Main' as never);
+          return;
+        }
+      } catch {
+        await authStorage.clear();
+      }
       navigation.navigate('Onboarding' as never);
-    }, 3000);
+    };
 
+    const timer = setTimeout(checkAuth, 2000);
     return () => clearTimeout(timer);
-  }, [navigation, slideAnim, fadeAnim]);
+  }, [navigation, slideAnim, fadeAnim, dispatch]);
 
   return (
     <LinearGradient

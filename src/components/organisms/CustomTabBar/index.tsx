@@ -1,11 +1,13 @@
 import React from 'react';
-import { View, Animated } from 'react-native';
+import { View, Animated, DeviceEventEmitter } from 'react-native';
 import { colors } from '../../../theme';
 import WaveBackground from '../../molecules/WaveBackground';
 import TabButton from '../../molecules/TabButton';
 import CenterTabButton from '../../molecules/CenterTabButton';
 import { CustomTabBarProps, TabLayout } from './types';
 import { styles } from './styles';
+
+export const SCROLL_TO_TOP_EVENT = 'tabScrollToTop';
 
 const CustomTabBarComponent: React.FC<CustomTabBarProps> = ({
   state,
@@ -72,6 +74,11 @@ const CustomTabBarComponent: React.FC<CustomTabBarProps> = ({
 
             if (!isFocused && !event.defaultPrevented) {
               navigation.navigate(route.name);
+            } else if (isFocused) {
+              // Bấm lại tab đang active → cuộn về đầu
+              DeviceEventEmitter.emit(SCROLL_TO_TOP_EVENT, {
+                routeName: route.name,
+              });
             }
           };
 

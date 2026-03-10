@@ -59,6 +59,7 @@ const BottomTabNavigator = () => {
           options={{
             tabBarLabel: 'Mua',
             tabBarIcon: ShopTabBarIcon,
+            tabBarHideOnKeyboard: false,
           }}
         />
         <Tab.Screen

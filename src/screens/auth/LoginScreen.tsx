@@ -10,10 +10,10 @@ import {
   Platform,
   ScrollView,
   Alert,
-  SafeAreaView,
   Keyboard,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../theme';
 import { Button } from '../../components/atoms';
 import { SuccessModal } from '../../components/ui';
@@ -23,7 +23,9 @@ import {
   loginStart,
   loginSuccess,
   loginFailure,
+  updateUser,
 } from '../../redux/auth/authSlice';
+import { authStorage } from '../../utils/authStorage';
 
 const LoginScreen = ({ navigation }: any) => {
   const dispatch = useAppDispatch();
@@ -49,16 +51,56 @@ const LoginScreen = ({ navigation }: any) => {
     dispatch(loginStart());
 
     try {
-      const user = await authService.login({ email, password });
+      // Call API
+      const response = await authService.login({ email: email.trim(), password });
 
-      // Store user data in Redux
-      dispatch(loginSuccess(user));
+      const basicUser = {
+        id: response.data.id,
+        email: response.data.email,
+        fullName: response.data.fullName,
+        avatarUrl: response.data.avatarUrl,
+        roles: response.data.roles,
+        isVerified: response.data.isVerified,
+        authProvider: response.data.authProvider,
+        reputationScore: 0,
+        isActive: true,
+      };
 
-      // Dismiss keyboard and stop loading
+      const tokens = {
+        idToken: response.data.idToken,
+        refreshToken: response.data.refreshToken,
+        expiresIn: response.data.expiresIn,
+      };
+
+      // Store user data and tokens in Redux
+      dispatch(
+        loginSuccess({
+          user: basicUser,
+          ...tokens,
+        }),
+      );
+
+      let isVerified = basicUser.isVerified;
+
+      try {
+        const fullProfile = await authService.getProfile();
+        const userToSave = { ...fullProfile, id: basicUser.id };
+        dispatch(updateUser(userToSave));
+        authStorage.save({ refreshToken: tokens.refreshToken, user: userToSave }).catch(() => {});
+        isVerified = fullProfile.isVerified ?? basicUser.isVerified;
+      } catch (profileError) {
+        console.log('Failed to fetch full profile, using basic data:', profileError);
+        authStorage.save({ refreshToken: tokens.refreshToken, user: basicUser }).catch(() => {});
+      }
+
       setLoading(false);
       Keyboard.dismiss();
 
-      // Show success modal after a brief delay to ensure keyboard is dismissed
+      if (!isVerified) {
+        navigation.replace('VerifyEmail', { email: email.trim() });
+        return;
+      }
+
       setTimeout(() => {
         setShowSuccess(true);
       }, 100);
