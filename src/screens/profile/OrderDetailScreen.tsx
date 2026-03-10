@@ -337,7 +337,7 @@ const OrderDetailScreen = ({ navigation, route }: any) => {
         {/* Seller info */}
         <SectionCard title="Người bán" icon="person-outline">
           <InfoRow label="Tên"       value={order.seller.fullName} />
-          <InfoRow label="Email"     value={order.seller.email} />
+          {/* <InfoRow label="Email"     value={order.seller.email} /> */}
           {order.seller.phone && (
             <InfoRow label="Điện thoại" value={order.seller.phone} />
           )}

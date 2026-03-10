@@ -19,29 +19,8 @@ import { bicycleService } from '../../api/bicycleService';
 import { colors } from '../../theme';
 import type { BicycleListing, BicycleStatus } from '../../types/bicycle';
 import { showToast } from '../../utils/toast';
-
-const STATUS_TABS: { label: string; value: BicycleStatus | undefined }[] = [
-  { label: 'Tất cả', value: undefined },
-  { label: 'Chờ duyệt', value: 'PENDING' },
-  { label: 'Đang bán', value: 'APPROVED' },
-  { label: 'Đã được đặt', value: 'RESERVED' },
-  { label: 'Đã bán', value: 'SOLD' },
-  { label: 'Bị ẩn', value: 'HIDDEN' },
-  { label: 'Từ chối', value: 'REJECTED' },
-];
-
-const STATUS_CONFIG: Record<BicycleStatus, { label: string; color: string; bg: string }> = {
-  PENDING:  { label: 'Chờ duyệt',  color: '#92400E', bg: '#FEF3C7' },
-  APPROVED: { label: 'Đang bán',   color: '#065F46', bg: '#D1FAE5' },
-  RESERVED: { label: 'Đã đặt',     color: '#1D4ED8', bg: '#DBEAFE' },
-  SOLD:     { label: 'Đã bán',     color: '#374151', bg: '#F3F4F6' },
-  HIDDEN:   { label: 'Bị ẩn',      color: '#6B7280', bg: '#F9FAFB' },
-  REJECTED: { label: 'Từ chối',    color: '#991B1B', bg: '#FEE2E2' },
-};
-
-const CONDITION_LABELS: Record<string, string> = {
-  NEW: 'Mới', LIKE_NEW: 'Như mới', GOOD: 'Tốt', FAIR: 'Khá', POOR: 'Cũ',
-};
+import { STATUS_CONFIG, STATUS_TABS } from '../../constant/enumsStatus';
+import { CONDITION_LABELS } from '../../constant/enums';
 
 const formatPrice = (price: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);

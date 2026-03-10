@@ -59,6 +59,15 @@ const ShopFilterBar: React.FC<Props> = ({
       style={styles.row}
       contentContainerStyle={styles.content}
     >
+
+      {/* Clear all */}
+      {hasActive && (
+        <TouchableOpacity style={styles.clearChip} onPress={onClearAll}>
+          <Icon name="refresh-outline" size={15} color={colors.error} />
+          <Text style={styles.clearChipText}>Xóa lọc</Text>
+        </TouchableOpacity>
+      )}
+      
       {/* Category */}
       <TouchableOpacity
         style={[styles.chip, categoryName !== null && styles.chipActive]}
@@ -162,13 +171,7 @@ const ShopFilterBar: React.FC<Props> = ({
         )}
       </TouchableOpacity>
 
-      {/* Clear all */}
-      {hasActive && (
-        <TouchableOpacity style={styles.clearChip} onPress={onClearAll}>
-          <Icon name="refresh-outline" size={15} color={colors.error} />
-          <Text style={styles.clearChipText}>Xóa lọc</Text>
-        </TouchableOpacity>
-      )}
+      
     </ScrollView>
   );
 };

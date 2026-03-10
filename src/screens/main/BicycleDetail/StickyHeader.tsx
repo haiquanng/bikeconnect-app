@@ -92,6 +92,7 @@ const styles = StyleSheet.create({
   thumb: {
     width: 46,
     height: 46,
+    marginTop: 10,
     borderRadius: 6,
     backgroundColor: colors.gray[100],
   },
@@ -115,6 +116,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 4,
+    marginTop: 10,
   },
 });
 
