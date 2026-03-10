@@ -29,23 +29,9 @@ import BicycleListCard from '../../components/molecules/BicycleListCard';
 import BicycleGridCard from '../../components/molecules/BicycleGridCard';
 import ShopFilterBar from '../../components/molecules/ShopFilterBar';
 import { SCROLL_TO_TOP_EVENT } from '../../components/organisms/CustomTabBar';
+import { SORT_OPTIONS, CONDITION_OPTIONS } from '../../constant/enums';
 
 type ViewMode = 'list' | 'grid';
-
-const SORT_OPTIONS = [
-  { value: '-createdAt', label: 'Mới nhất' },
-  { value: 'price', label: 'Giá tăng dần' },
-  { value: '-price', label: 'Giá giảm dần' },
-  { value: '-viewCount', label: 'Xem nhiều nhất' },
-];
-
-const CONDITION_OPTIONS: { value: BicycleCondition; label: string }[] = [
-  { value: 'NEW', label: 'Mới' },
-  { value: 'LIKE_NEW', label: 'Như mới' },
-  { value: 'GOOD', label: 'Tốt' },
-  { value: 'FAIR', label: 'Khá' },
-  { value: 'POOR', label: 'Cũ' },
-];
 
 type ActiveModal = null | 'sort' | 'condition' | 'brand' | 'category' | 'price';
 
