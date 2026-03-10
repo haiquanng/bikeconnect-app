@@ -15,4 +15,14 @@ const CONDITION_OPTIONS: { value: BicycleCondition; label: string }[] = [
   { value: 'POOR', label: 'Cũ' },
 ];
 
-export { SORT_OPTIONS, CONDITION_OPTIONS };
+// for detail screen
+const CONDITION_LABELS: Record<string, string> = {
+  NEW: 'Mới',
+  LIKE_NEW: 'Như mới',
+  GOOD: 'Tốt',
+  FAIR: 'Khá',
+  POOR: 'Cũ',
+};
+
+
+export { SORT_OPTIONS, CONDITION_OPTIONS, CONDITION_LABELS };

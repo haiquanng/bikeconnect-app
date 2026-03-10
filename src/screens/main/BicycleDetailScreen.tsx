@@ -3,14 +3,13 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   ScrollView,
   ActivityIndicator,
   useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/Ionicons';
+// import Icon from 'react-native-vector-icons/Ionicons';
 import { colors } from '../../theme';
 import { bicycleService } from '../../api/bicycleService';
 import type { BicycleListing } from '../../types/bicycle';
@@ -19,6 +18,7 @@ import { useAppSelector } from '../../redux/hooks';
 import SectionHeader from '../../components/molecules/SectionHeader';
 import BicycleListCard from '../../components/molecules/BicycleListCard';
 import { formatDate } from '../../utils/helper';
+import { CONDITION_LABELS } from '../../constant/enums';
 
 import Gallery from './BicycleDetail/Gallery';
 import SellerRow from './BicycleDetail/SellerRow';
@@ -26,14 +26,6 @@ import ProductInfo from './BicycleDetail/ProductInfo';
 import SpecsModal from './BicycleDetail/SpecsModal';
 import StickyHeader from './BicycleDetail/StickyHeader';
 import BottomBar from './BicycleDetail/BottomBar';
-
-const CONDITION_LABELS: Record<string, string> = {
-  NEW: 'Mới',
-  LIKE_NEW: 'Như mới',
-  GOOD: 'Tốt',
-  FAIR: 'Khá',
-  POOR: 'Cũ',
-};
 
 const BicycleDetailScreen = ({ navigation, route }: any) => {
   const { id } = route.params as { id: string };
@@ -170,10 +162,10 @@ const BicycleDetailScreen = ({ navigation, route }: any) => {
           <Text style={styles.metaLine}>
             Cập nhật lần cuối: {formatDate(item.updatedAt)}
           </Text>
-          <TouchableOpacity style={styles.reportRow}>
+          {/* <TouchableOpacity style={styles.reportRow}>
             <Icon name="information-circle-outline" size={15} color={colors.textSecondary} />
             <Text style={styles.reportText}>Báo cáo sản phẩm</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
 
         <View style={styles.section}>
