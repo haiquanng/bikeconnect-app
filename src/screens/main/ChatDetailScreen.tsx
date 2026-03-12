@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
   myMessageContainer: { alignSelf: 'flex-end' },
   theirMessageContainer: { alignSelf: 'flex-start' },
   messageBubble: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 16 },
-  myMessageBubble: { backgroundColor: colors.textPrimary, borderBottomRightRadius: 4 },
+  myMessageBubble: { backgroundColor: colors.primaryGreen, borderBottomRightRadius: 4 },
   theirMessageBubble: { backgroundColor: colors.gray[100], borderBottomLeftRadius: 4 },
   messageText: { fontSize: 15, lineHeight: 20, marginBottom: 4 },
   myMessageText: { color: colors.white },
@@ -440,7 +440,7 @@ const styles = StyleSheet.create({
 
   // System message
   systemMessageContainer: { alignSelf: 'center', marginBottom: 8, paddingHorizontal: 12, paddingVertical: 4, backgroundColor: colors.gray[100], borderRadius: 12 },
-  systemMessageText: { fontSize: 12, color: colors.textSecondary, textAlign: 'center' },
+  systemMessageText: { fontSize: 12, color: colors.error, textAlign: 'center' },
 
   // Product card in message
   productCard: {
