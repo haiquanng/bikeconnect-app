@@ -14,21 +14,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors } from '../../theme';
-import { Conversation } from '../../types/conversation';
-import {
-  mockSellingConversations,
-  mockBuyingConversations,
-} from '../../data/mockConversations';
+import { conversationService, ApiConversation } from '../../api/conversationService';
+import { socketService } from '../../services/socketService';
+import { useAppSelector } from '../../redux/hooks';
 import ConversationItem from '../../components/molecules/ConversationItem';
 import { SCROLL_TO_TOP_EVENT } from '../../components/organisms/CustomTabBar';
 
-type TabType = 'all' | 'buying' | 'selling' | 'unread';
+type TabType = 'all' | 'unread';
 
 const InboxScreen = ({ navigation }: any) => {
   const [selectedTab, setSelectedTab] = useState<TabType>('all');
-  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [conversations, setConversations] = useState<ApiConversation[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const listRef = useRef<FlatList<Conversation>>(null);
+  const listRef = useRef<FlatList<ApiConversation>>(null);
+  const idToken = useAppSelector(state => state.auth.idToken);
 
   useFocusEffect(
     useCallback(() => {
@@ -48,39 +47,32 @@ const InboxScreen = ({ navigation }: any) => {
     return () => sub.remove();
   }, []);
 
-  const loadConversations = useCallback(() => {
-    let data: Conversation[] = [];
-
-    switch (selectedTab) {
-      case 'all':
-        data = [...mockSellingConversations, ...mockBuyingConversations];
-        break;
-      case 'buying':
-        data = mockBuyingConversations;
-        break;
-      case 'selling':
-        data = mockSellingConversations;
-        break;
-      case 'unread':
-        data = [...mockSellingConversations, ...mockBuyingConversations].filter(
-          conv => conv.unreadCount > 0,
-        );
-        break;
+  const loadConversations = useCallback(async () => {
+    try {
+      const { data } = await conversationService.getConversations();
+      setConversations(data);
+    } catch {
+      // silent
     }
+  }, []);
 
-    setConversations(data);
-  }, [selectedTab]);
+  useFocusEffect(useCallback(() => { loadConversations(); }, [loadConversations]));
 
   useEffect(() => {
-    loadConversations();
-  }, [selectedTab, loadConversations]);
+    if (!idToken) return;
+    if (!socketService.connected) socketService.connect(idToken);
+    const unsub = socketService.on('new_message', () => { loadConversations(); });
+    return unsub;
+  }, [idToken, loadConversations]);
 
   const tabs = [
     { id: 'all', label: 'Tất cả' },
-    { id: 'buying', label: 'Mua' },
-    { id: 'selling', label: 'Bán' },
     { id: 'unread', label: 'Chưa đọc' },
   ];
+
+  const displayedConversations = selectedTab === 'unread'
+    ? conversations.filter(c => c.unreadCount > 0)
+    : conversations;
 
   const renderTabs = () => (
     <View style={styles.tabsWrapper}>
@@ -110,33 +102,13 @@ const InboxScreen = ({ navigation }: any) => {
   );
 
   const renderEmptyState = () => {
-    let title = '';
-    let subtitle = '';
-    let buttonText = '';
-
-    switch (selectedTab) {
-      case 'all':
-        title = 'Quản lý cuộc trò chuyện của bạn';
-        subtitle = 'với người mua và người bán tại đây';
-        buttonText = 'Duyệt cửa hàng';
-        break;
-      case 'buying':
-        title = 'Tìm sản phẩm bạn thích';
-        subtitle =
-          'và liên hệ với người bán để đặt câu hỏi hoặc đưa ra đề nghị';
-        buttonText = 'Tới cửa hàng';
-        break;
-      case 'selling':
-        title = 'Đăng sản phẩm bạn muốn bán';
-        subtitle = 'và nhận câu hỏi cũng như đề nghị từ người mua';
-        buttonText = 'Bắt đầu bán';
-        break;
-      case 'unread':
-        title = 'Không có tin nhắn chưa đọc';
-        subtitle = 'Tất cả tin nhắn của bạn đã được đọc';
-        buttonText = 'Xem tất cả';
-        break;
-    }
+    const title = selectedTab === 'unread'
+      ? 'Không có tin nhắn chưa đọc'
+      : 'Quản lý cuộc trò chuyện của bạn';
+    const subtitle = selectedTab === 'unread'
+      ? 'Tất cả tin nhắn của bạn đã được đọc'
+      : 'với người mua và người bán tại đây';
+    const buttonText = selectedTab === 'unread' ? 'Xem tất cả' : 'Duyệt cửa hàng';
 
     return (
       <View style={styles.emptyContainer}>
@@ -152,25 +124,10 @@ const InboxScreen = ({ navigation }: any) => {
           <View style={styles.buttonsContainer}>
             <TouchableOpacity
               style={styles.primaryButton}
-              onPress={() => {
-                if (selectedTab === 'selling') {
-                  navigation.navigate('Sell');
-                } else {
-                  navigation.navigate('Shop');
-                }
-              }}
+              onPress={() => navigation.navigate('Shop')}
             >
               <Text style={styles.primaryButtonText}>{buttonText}</Text>
             </TouchableOpacity>
-
-            {selectedTab === 'all' && (
-              <TouchableOpacity
-                style={styles.secondaryButton}
-                onPress={() => navigation.navigate('Sell')}
-              >
-                <Text style={styles.secondaryButtonText}>Bắt đầu bán</Text>
-              </TouchableOpacity>
-            )}
           </View>
         )}
 
@@ -209,7 +166,7 @@ const InboxScreen = ({ navigation }: any) => {
       {renderTabs()}
 
       {/* Content */}
-      {conversations.length === 0 ? (
+      {displayedConversations.length === 0 ? (
         <ScrollView
           style={styles.content}
           contentContainerStyle={styles.contentContainer}
@@ -219,13 +176,20 @@ const InboxScreen = ({ navigation }: any) => {
       ) : (
         <FlatList
           ref={listRef}
-          data={conversations}
-          keyExtractor={item => item.id}
+          data={displayedConversations}
+          keyExtractor={item => item._id}
           renderItem={({ item }) => (
             <ConversationItem
               conversation={item}
               onPress={() => {
-                navigation.navigate('ChatDetail', { conversation: item });
+                navigation.navigate('ChatDetail', {
+                  conversationId: item._id,
+                  partner: {
+                    _id: item.chatPartner._id,
+                    fullName: item.chatPartner.fullName,
+                    avatarUrl: item.chatPartner.avatarUrl,
+                  },
+                });
               }}
             />
           )}
@@ -233,9 +197,9 @@ const InboxScreen = ({ navigation }: any) => {
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              onRefresh={() => {
+              onRefresh={async () => {
                 setRefreshing(true);
-                loadConversations();
+                await loadConversations();
                 setRefreshing(false);
               }}
               colors={[colors.primaryGreen]}
