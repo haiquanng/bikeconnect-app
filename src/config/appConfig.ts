@@ -5,10 +5,9 @@ if (!Config.API_BASE_URL) {
 }
 export const API_BASE_URL = Config.API_BASE_URL;
 
-// Socket.IO URL
-export const SOCKET_URL = __DEV__
-  ? 'http://localhost:3000'
-  : 'https://api.bikeconnect.com';
+// Socket.IO URL — same server as API, strip the /api path
+export const SOCKET_URL = (Config.SOCKET_URL || Config.API_BASE_URL || '')
+  .replace(/\/api\/?$/, '');
 
 // Cloudinary Config
 export const CLOUDINARY_CLOUD_NAME = Config.CLOUDINARY_CLOUD_NAME || '';

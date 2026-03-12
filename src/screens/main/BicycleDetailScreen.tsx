@@ -135,7 +135,13 @@ const BicycleDetailScreen = ({ navigation, route }: any) => {
           onBack={() => navigation.goBack()}
         />
 
-        <SellerRow seller={item.seller} location={item.location} />
+        <SellerRow
+          seller={item.seller}
+          location={item.location}
+          bicycleId={item._id}
+          navigation={navigation}
+          isSeller={isSeller}
+        />
 
         <View style={styles.divider} />
 

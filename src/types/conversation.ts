@@ -22,3 +22,19 @@ export interface Conversation {
 }
 
 export type ConversationType = 'buying' | 'selling';
+
+// ─── params for ChatDetailScreen ───────────────────────────────────
+
+export interface ChatDetailParams {
+  conversationId: string;
+  partner: {
+    _id: string;
+    fullName: string;
+    avatarUrl?: string;
+  };
+  bicycleContext?: {
+    id: string;
+    name?: string;
+    image?: string;
+  };
+}
