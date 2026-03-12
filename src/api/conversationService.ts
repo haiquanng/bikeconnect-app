@@ -91,6 +91,14 @@ export const conversationService = {
     return res.data ?? res.message;
   },
 
+  sendImageMessage: async (conversationId: string, imageUrl: string): Promise<ApiMessage> => {
+    const res: any = await apiClient.post(
+      `/conversations/${conversationId}/messages`,
+      { content: imageUrl, type: 'IMAGE' },
+    );
+    return res.data ?? res.message;
+  },
+
   markAsRead: (conversationId: string): Promise<any> =>
     apiClient.put(`/conversations/${conversationId}/read`),
 

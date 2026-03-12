@@ -8,6 +8,8 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -16,6 +18,11 @@ import Toast from 'react-native-toast-message';
 import { colors } from '../../theme';
 import { orderService } from '../../api/orderService';
 import { walletService } from '../../api/walletService';
+import {
+  violationReportService,
+  ViolationType,
+  VIOLATION_TYPE_LABELS,
+} from '../../api/violationReportService';
 import type { Order, OrderStatus } from '../../types/order';
 
 /* ─── Helpers ─── */
@@ -104,6 +111,11 @@ const OrderDetailScreen = ({ navigation, route }: any) => {
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
   const [paying, setPaying]   = useState(false);
+  const [receiving, setReceiving] = useState(false);
+  const [reportVisible, setReportVisible] = useState(false);
+  const [reportType, setReportType] = useState<ViolationType>('FRAUD');
+  const [reportDesc, setReportDesc] = useState('');
+  const [submittingReport, setSubmittingReport] = useState(false);
 
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -230,6 +242,55 @@ const OrderDetailScreen = ({ navigation, route }: any) => {
     }
   };
 
+  const handleReceive = () => {
+    Alert.alert(
+      'Xác nhận nhận hàng',
+      'Bạn đã nhận được hàng và đồng ý hoàn tất giao dịch?',
+      [
+        { text: 'Chưa', style: 'cancel' },
+        {
+          text: 'Đã nhận',
+          onPress: async () => {
+            try {
+              setReceiving(true);
+              const updated = await orderService.receiveOrder(orderId);
+              setOrder(updated);
+              Toast.show({ type: 'success', text1: 'Xác nhận thành công!', text2: 'Đơn hàng đã hoàn thành.' });
+            } catch (e: any) {
+              Alert.alert('Lỗi', e?.response?.data?.message ?? 'Không thể xác nhận');
+            } finally {
+              setReceiving(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleSubmitReport = async () => {
+    if (!order) { return; }
+    if (reportDesc.trim().length < 10) {
+      Alert.alert('Thiếu thông tin', 'Mô tả tối thiểu 10 ký tự');
+      return;
+    }
+    try {
+      setSubmittingReport(true);
+      await violationReportService.create({
+        reportedUserId: order.seller._id,
+        bicycleId:      order.bicycle._id,
+        violationType:  reportType,
+        description:    reportDesc.trim(),
+      });
+      setReportVisible(false);
+      setReportDesc('');
+      Toast.show({ type: 'success', text1: 'Đã gửi báo cáo', text2: 'Chúng tôi sẽ xem xét trong 24h.' });
+    } catch (e: any) {
+      Alert.alert('Lỗi', e?.response?.data?.message ?? 'Không thể gửi báo cáo');
+    } finally {
+      setSubmittingReport(false);
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingBox}>
@@ -242,9 +303,9 @@ const OrderDetailScreen = ({ navigation, route }: any) => {
 
   const statusColor = STATUS_COLOR[order.status] ?? colors.textSecondary;
   const canCancel   = CANCELLABLE.includes(order.status);
-  // TODO: khi BE thêm status DEPOSIT_CONFIRMED, thêm vào canPay + isDepositPendingFull
   const isDepositPendingFull = order.paymentType === 'DEPOSIT_10' && order.status === 'DEPOSIT_CONFIRMED';
   const canPay = ['RESERVED_FULL', 'RESERVED_DEPOSIT', 'WAITING_REMAINING_PAYMENT', 'DEPOSIT_CONFIRMED'].includes(order.status);
+  const canDeliver = order.status === 'DELIVERED';
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -374,7 +435,7 @@ const OrderDetailScreen = ({ navigation, route }: any) => {
         </View>
       )}
 
-      {/* Buyer action bar */}
+      {/* Buyer action bar — pay / cancel */}
       {(canPay || canCancel) && (
         <View style={styles.bottomBar}>
           {canCancel && (
@@ -407,6 +468,88 @@ const OrderDetailScreen = ({ navigation, route }: any) => {
           )}
         </View>
       )}
+
+      {/* Buyer action bar — delivered */}
+      {canDeliver && (
+        <View style={styles.bottomBar}>
+          <TouchableOpacity
+            style={[styles.reportBtn, (receiving || submittingReport) && styles.btnDisabled]}
+            onPress={() => setReportVisible(true)}
+            disabled={receiving || submittingReport}
+          >
+            <Icon name="flag-outline" size={16} color={colors.error} />
+            <Text style={styles.reportBtnText}>Báo cáo</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.payBtn, receiving && styles.btnDisabled]}
+            onPress={handleReceive}
+            disabled={receiving || submittingReport}
+          >
+            {receiving
+              ? <ActivityIndicator color={colors.white} />
+              : <Text style={styles.payBtnText}>Đã nhận hàng</Text>
+            }
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Report Modal */}
+      <Modal
+        visible={reportVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setReportVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Báo cáo tin đăng</Text>
+              <TouchableOpacity onPress={() => setReportVisible(false)}>
+                <Icon name="close" size={22} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalLabel}>Lý do báo cáo</Text>
+            <View style={styles.typeList}>
+              {(Object.keys(VIOLATION_TYPE_LABELS) as ViolationType[]).map(type => (
+                <TouchableOpacity
+                  key={type}
+                  style={[styles.typeChip, reportType === type && styles.typeChipActive]}
+                  onPress={() => setReportType(type)}
+                >
+                  <Text style={[styles.typeChipText, reportType === type && styles.typeChipTextActive]}>
+                    {VIOLATION_TYPE_LABELS[type]}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.modalLabel}>Mô tả chi tiết</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Nhập mô tả (tối thiểu 10 ký tự)..."
+              placeholderTextColor={colors.gray[400]}
+              multiline
+              numberOfLines={4}
+              maxLength={2000}
+              value={reportDesc}
+              onChangeText={setReportDesc}
+              textAlignVertical="top"
+            />
+
+            <TouchableOpacity
+              style={[styles.submitBtn, submittingReport && styles.btnDisabled]}
+              onPress={handleSubmitReport}
+              disabled={submittingReport}
+            >
+              {submittingReport
+                ? <ActivityIndicator color={colors.white} />
+                : <Text style={styles.submitBtnText}>Gửi báo cáo</Text>
+              }
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
     </SafeAreaView>
   );
@@ -583,6 +726,70 @@ const styles = StyleSheet.create({
   },
   payBtnText: { fontSize: 15, fontWeight: '700', color: colors.white },
   btnDisabled: { opacity: 0.5 },
+
+  reportBtn: {
+    flex: 1,
+    height: 50,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: colors.error,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  reportBtnText: { fontSize: 14, fontWeight: '700', color: colors.error },
+
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: 36,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary },
+  modalLabel: { fontSize: 14, fontWeight: '600', color: colors.textPrimary, marginBottom: 10 },
+  typeList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
+  typeChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: colors.gray[300],
+  },
+  typeChipActive: { borderColor: colors.error, backgroundColor: '#fee2e2' },
+  typeChipText: { fontSize: 13, color: colors.textSecondary },
+  typeChipTextActive: { color: colors.error, fontWeight: '600' },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: colors.gray[300],
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 14,
+    color: colors.textPrimary,
+    minHeight: 96,
+    marginBottom: 20,
+  },
+  submitBtn: {
+    height: 50,
+    borderRadius: 12,
+    backgroundColor: colors.error,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  submitBtnText: { fontSize: 15, fontWeight: '700', color: colors.white },
 });
 
 export default OrderDetailScreen;

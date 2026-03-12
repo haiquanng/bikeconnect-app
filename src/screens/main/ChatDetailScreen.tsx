@@ -10,13 +10,20 @@ import {
   Platform,
   Image,
   ActivityIndicator,
+  Alert,
+  Modal,
+  Dimensions,
 } from 'react-native';
+
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
+import { launchImageLibrary } from 'react-native-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { colors } from '../../theme';
 import { useAppSelector } from '../../redux/hooks';
 import { conversationService, ApiMessage, ApiMessageBicycle } from '../../api/conversationService';
+import { uploadImageToCloudinary } from '../../api/uploadService';
 import { socketService } from '../../services/socketService';
 import type { ChatDetailParams } from '../../types/conversation';
 
@@ -37,6 +44,7 @@ const ChatDetailScreen = ({ route, navigation }: any) => {
   const [inputText, setInputText] = useState('');
   const [isOnline, setIsOnline] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [previewUri, setPreviewUri] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -129,6 +137,26 @@ const ChatDetailScreen = ({ route, navigation }: any) => {
     }
   };
 
+  const handleSendImage = async () => {
+    if (sending) return;
+    const result = await launchImageLibrary({ mediaType: 'photo', quality: 0.8, selectionLimit: 1 });
+    const asset = result.assets?.[0];
+    if (!asset?.uri) return;
+    setSending(true);
+    try {
+      const { url } = await uploadImageToCloudinary(asset.uri);
+      const sent = await conversationService.sendImageMessage(conversationId, url);
+      if (sent) {
+        setMessages(prev => [...prev, sent]);
+        setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+      }
+    } catch {
+      Alert.alert('Lỗi', 'Không thể gửi ảnh, thử lại sau.');
+    } finally {
+      setSending(false);
+    }
+  };
+
   const handleSendProduct = async () => {
     if (!bicycleContext?.id || sending) return;
     setSending(true);
@@ -198,6 +226,15 @@ const ChatDetailScreen = ({ route, navigation }: any) => {
         {bicycle ? (
           <>
             {renderProductCard(bicycle, isMe)}
+            <Text style={[styles.messageTime, isMe ? styles.myMessageTime : styles.theirMessageTime]}>
+              {formatTime(item.createdAt)}
+            </Text>
+          </>
+        ) : item.type === 'IMAGE' ? (
+          <>
+            <TouchableOpacity activeOpacity={0.9} onPress={() => setPreviewUri(item.content)}>
+              <Image source={{ uri: item.content }} style={styles.imageMessage} resizeMode="cover" />
+            </TouchableOpacity>
             <Text style={[styles.messageTime, isMe ? styles.myMessageTime : styles.theirMessageTime]}>
               {formatTime(item.createdAt)}
             </Text>
@@ -313,35 +350,48 @@ const ChatDetailScreen = ({ route, navigation }: any) => {
 
         {/* Input */}
         <View style={styles.inputContainer}>
-          <View style={styles.inputWrapper}>
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={handleSendImage}
+            disabled={sending}
+          >
+            <Icon name="add-circle-outline" size={32} color={colors.gray[500]} />
+          </TouchableOpacity>
+
+          <View style={styles.inputRow}>
             <TextInput
               style={styles.input}
-              placeholder="Nhập tin nhắn..."
+              placeholder="Soạn tin..."
               placeholderTextColor={colors.gray[400]}
               value={inputText}
               onChangeText={handleInputChange}
               multiline
               maxLength={500}
             />
+            {inputText.trim() ? (
+              <TouchableOpacity
+                style={styles.sendButton}
+                onPress={handleSend}
+                disabled={sending}
+              >
+                {sending ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <Icon name="send" size={18} color={colors.white} />
+                )}
+              </TouchableOpacity>
+            ) : null}
           </View>
-
-          <TouchableOpacity
-            style={[styles.sendButton, inputText.trim() && styles.sendButtonActive]}
-            onPress={handleSend}
-            disabled={!inputText.trim() || sending}
-          >
-            {sending ? (
-              <ActivityIndicator size="small" color={colors.white} />
-            ) : (
-              <Icon
-                name="send"
-                size={20}
-                color={inputText.trim() ? colors.white : colors.gray[400]}
-              />
-            )}
-          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      <Modal visible={!!previewUri} transparent animationType="fade" onRequestClose={() => setPreviewUri(null)}>
+        <TouchableOpacity style={styles.previewOverlay} activeOpacity={1} onPress={() => setPreviewUri(null)}>
+          {previewUri && (
+            <Image source={{ uri: previewUri }} style={{ width: SCREEN_W, height: SCREEN_H }} resizeMode="contain" />
+          )}
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -411,6 +461,7 @@ const styles = StyleSheet.create({
   productTitle: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, marginBottom: 4, lineHeight: 18 },
   productPrice: { fontSize: 13, fontWeight: '700', color: colors.primaryBlue, marginBottom: 2 },
   productCondition: { fontSize: 11, color: colors.textSecondary },
+  imageMessage: { width: 200, height: 200, borderRadius: 12, marginBottom: 4 },
 
   bicycleBanner: {
     flexDirection: 'row',
@@ -446,25 +497,31 @@ const styles = StyleSheet.create({
     borderTopColor: colors.gray[100],
     backgroundColor: colors.white,
   },
-  inputWrapper: {
+  inputWrapper: { flex: 1 },
+  input: { flex: 1, fontSize: 15, color: colors.textPrimary, maxHeight: 80, paddingTop: 0, paddingBottom: 0, textAlignVertical: 'center' },
+  sendButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 6,
+    backgroundColor: colors.primaryBlue,
+    alignSelf: 'center',
+  },
+  sendButtonActive: { backgroundColor: colors.primaryBlue },
+  addButton: { justifyContent: 'center', alignItems: 'center', marginRight: 8 },
+  previewOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', justifyContent: 'center', alignItems: 'center' },
+  inputRow: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.gray[100],
-    borderRadius: 20,
-    paddingHorizontal: 16,
+    borderRadius: 22,
+    paddingHorizontal: 14,
     paddingVertical: 8,
     maxHeight: 100,
   },
-  input: { fontSize: 15, color: colors.textPrimary, maxHeight: 80 },
-  sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 8,
-    backgroundColor: colors.gray[200],
-  },
-  sendButtonActive: { backgroundColor: colors.primaryBlue },
 });
 
 export default ChatDetailScreen;
