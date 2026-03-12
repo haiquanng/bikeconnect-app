@@ -298,7 +298,8 @@ const ChatDetailScreen = ({ route, navigation }: any) => {
 
       <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
       >
         {loading ? (
           <View style={styles.loadingContainer}>
