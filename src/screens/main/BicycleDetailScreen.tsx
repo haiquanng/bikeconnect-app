@@ -139,6 +139,9 @@ const BicycleDetailScreen = ({ navigation, route }: any) => {
           seller={item.seller}
           location={item.location}
           bicycleId={item._id}
+          bicycleName={item.title}
+          bicycleImage={item.images?.[0]?.url}
+          bicyclePrice={item.price}
           navigation={navigation}
           isSeller={isSeller}
         />

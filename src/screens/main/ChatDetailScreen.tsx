@@ -16,15 +16,18 @@ import { useFocusEffect } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { colors } from '../../theme';
 import { useAppSelector } from '../../redux/hooks';
-import { conversationService, ApiMessage } from '../../api/conversationService';
+import { conversationService, ApiMessage, ApiMessageBicycle } from '../../api/conversationService';
 import { socketService } from '../../services/socketService';
 import type { ChatDetailParams } from '../../types/conversation';
 
 const formatTime = (iso: string) =>
   new Date(iso).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 
+const formatPrice = (price: number) =>
+  price.toLocaleString('vi-VN') + 'đ';
+
 const ChatDetailScreen = ({ route, navigation }: any) => {
-  const { conversationId, partner }: ChatDetailParams = route.params;
+  const { conversationId, partner, bicycleContext }: ChatDetailParams = route.params;
   const currentUser = useAppSelector(state => state.auth.user);
   const idToken = useAppSelector(state => state.auth.idToken);
 
@@ -120,14 +123,71 @@ const ChatDetailScreen = ({ route, navigation }: any) => {
         setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
       }
     } catch {
-      setInputText(text); // restore on failure
+      setInputText(text);
     } finally {
       setSending(false);
     }
   };
 
+  const handleSendProduct = async () => {
+    if (!bicycleContext?.id || sending) return;
+    setSending(true);
+    try {
+      const sent = await conversationService.sendProductMessage(conversationId, bicycleContext.id);
+      if (sent) {
+        setMessages(prev => [...prev, sent]);
+        setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+      }
+    } catch {
+      // silent
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const getImageUri = (img: string | { url: string } | undefined): string | undefined => {
+    if (!img) { return undefined; }
+    return typeof img === 'string' ? img : img.url;
+  };
+
+  const renderProductCard = (bicycle: ApiMessageBicycle, isMe: boolean) => {
+    const imageUri = getImageUri(bicycle.images?.[0]);
+    return (
+    <TouchableOpacity
+      style={[styles.productCard, isMe ? styles.productCardMe : styles.productCardThem]}
+      onPress={() => navigation.navigate('BicycleDetail', { id: bicycle._id })}
+      activeOpacity={0.8}
+    >
+      {imageUri ? (
+        <Image source={{ uri: imageUri }} style={styles.productImage} />
+      ) : (
+        <View style={[styles.productImage, styles.productImageFallback]}>
+          <Icon name="bicycle-outline" size={28} color={colors.gray[400]} />
+        </View>
+      )}
+      <View style={styles.productInfo}>
+        <Text style={styles.productTitle} numberOfLines={2}>{bicycle.title}</Text>
+        <Text style={styles.productPrice}>{formatPrice(bicycle.price)}</Text>
+        <Text style={styles.productCondition}>{bicycle.condition}</Text>
+      </View>
+    </TouchableOpacity>
+    );
+  };
+
   const renderMessage = ({ item }: { item: ApiMessage }) => {
     const isMe = item.senderId === currentUser?.id;
+    const bicycle = item.type === 'PRODUCT' && item.bicycleId && typeof item.bicycleId === 'object'
+      ? item.bicycleId as ApiMessageBicycle
+      : null;
+
+    if (item.type === 'SYSTEM') {
+      return (
+        <View style={styles.systemMessageContainer}>
+          <Text style={styles.systemMessageText}>{item.content}</Text>
+        </View>
+      );
+    }
+
     return (
       <View
         style={[
@@ -135,19 +195,28 @@ const ChatDetailScreen = ({ route, navigation }: any) => {
           isMe ? styles.myMessageContainer : styles.theirMessageContainer,
         ]}
       >
-        <View
-          style={[
-            styles.messageBubble,
-            isMe ? styles.myMessageBubble : styles.theirMessageBubble,
-          ]}
-        >
-          <Text style={[styles.messageText, isMe ? styles.myMessageText : styles.theirMessageText]}>
-            {item.content}
-          </Text>
-          <Text style={[styles.messageTime, isMe ? styles.myMessageTime : styles.theirMessageTime]}>
-            {formatTime(item.createdAt)}
-          </Text>
-        </View>
+        {bicycle ? (
+          <>
+            {renderProductCard(bicycle, isMe)}
+            <Text style={[styles.messageTime, isMe ? styles.myMessageTime : styles.theirMessageTime]}>
+              {formatTime(item.createdAt)}
+            </Text>
+          </>
+        ) : (
+          <View
+            style={[
+              styles.messageBubble,
+              isMe ? styles.myMessageBubble : styles.theirMessageBubble,
+            ]}
+          >
+            <Text style={[styles.messageText, isMe ? styles.myMessageText : styles.theirMessageText]}>
+              {item.content}
+            </Text>
+            <Text style={[styles.messageTime, isMe ? styles.myMessageTime : styles.theirMessageTime]}>
+              {formatTime(item.createdAt)}
+            </Text>
+          </View>
+        )}
       </View>
     );
   };
@@ -212,6 +281,36 @@ const ChatDetailScreen = ({ route, navigation }: any) => {
           />
         )}
 
+        {/* Bicycle context banner */}
+        {bicycleContext && (
+          <TouchableOpacity
+            style={styles.bicycleBanner}
+            onPress={() => navigation.navigate('BicycleDetail', { id: bicycleContext?.id })}
+            activeOpacity={0.8}
+          >
+            {bicycleContext.image ? (
+              <Image source={{ uri: bicycleContext.image }} style={styles.bannerImage} />
+            ) : (
+              <View style={[styles.bannerImage, styles.bannerImageFallback]}>
+                <Icon name="bicycle-outline" size={16} color={colors.gray[400]} />
+              </View>
+            )}
+            <View style={styles.bannerTextGroup}>
+              <Text style={styles.bannerName} numberOfLines={1}>{bicycleContext.name ?? 'Xem tin đăng'}</Text>
+              {bicycleContext.price != null && (
+                <Text style={styles.bannerPrice}>{formatPrice(bicycleContext.price)}</Text>
+              )}
+            </View>
+            <TouchableOpacity
+              style={[styles.bannerSendBtn, sending && styles.bannerSendBtnDisabled]}
+              onPress={handleSendProduct}
+              disabled={sending}
+            >
+              <Text style={styles.bannerSendText}>Gửi tin đăng</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        )}
+
         {/* Input */}
         <View style={styles.inputContainer}>
           <View style={styles.inputWrapper}>
@@ -274,6 +373,8 @@ const styles = StyleSheet.create({
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   messagesList: { paddingHorizontal: 16, paddingVertical: 16, flexGrow: 1 },
   emptyText: { textAlign: 'center', color: colors.textSecondary, marginTop: 40, fontSize: 14 },
+
+  // Text messages
   messageContainer: { marginBottom: 12, maxWidth: '80%' },
   myMessageContainer: { alignSelf: 'flex-end' },
   theirMessageContainer: { alignSelf: 'flex-start' },
@@ -286,6 +387,56 @@ const styles = StyleSheet.create({
   messageTime: { fontSize: 11 },
   myMessageTime: { color: colors.gray[300], textAlign: 'right' },
   theirMessageTime: { color: colors.textSecondary },
+
+  // System message
+  systemMessageContainer: { alignSelf: 'center', marginBottom: 8, paddingHorizontal: 12, paddingVertical: 4, backgroundColor: colors.gray[100], borderRadius: 12 },
+  systemMessageText: { fontSize: 12, color: colors.textSecondary, textAlign: 'center' },
+
+  // Product card in message
+  productCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    overflow: 'hidden',
+    backgroundColor: colors.white,
+    width: 260,
+  },
+  productCardMe: { borderColor: colors.gray[300] },
+  productCardThem: { borderColor: colors.gray[200] },
+  productImage: { width: 72, height: 72 },
+  productImageFallback: { backgroundColor: colors.gray[100], justifyContent: 'center', alignItems: 'center' },
+  productInfo: { flex: 1, padding: 10 },
+  productTitle: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, marginBottom: 4, lineHeight: 18 },
+  productPrice: { fontSize: 13, fontWeight: '700', color: colors.primaryBlue, marginBottom: 2 },
+  productCondition: { fontSize: 11, color: colors.textSecondary },
+
+  bicycleBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.gray[100],
+    backgroundColor: colors.gray[50],
+    gap: 10,
+  },
+  bannerImage: { width: 36, height: 36, borderRadius: 6, backgroundColor: colors.gray[200] },
+  bannerImageFallback: { justifyContent: 'center', alignItems: 'center' },
+  bannerTextGroup: { flex: 1, justifyContent: 'center' },
+  bannerName: { fontSize: 13, fontWeight: '600', color: colors.textPrimary },
+  bannerPrice: { fontSize: 12, color: colors.primaryBlue, fontWeight: '700', marginTop: 2 },
+  bannerSendBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: colors.textPrimary,
+  },
+  bannerSendBtnDisabled: { opacity: 0.5 },
+  bannerSendText: { fontSize: 12, fontWeight: '600', color: colors.white },
+
+  // Input
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',

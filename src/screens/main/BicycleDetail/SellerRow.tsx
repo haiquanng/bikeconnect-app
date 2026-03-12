@@ -17,11 +17,14 @@ interface Props {
   seller: BicycleListing['seller'];
   location: BicycleListing['location'];
   bicycleId: string;
+  bicycleName?: string;
+  bicycleImage?: string;
+  bicyclePrice?: number;
   navigation: any;
   isSeller: boolean;
 }
 
-const SellerRow = ({ seller, location, bicycleId, navigation, isSeller }: Props) => {
+const SellerRow = ({ seller, location, bicycleId, bicycleName, bicycleImage, bicyclePrice, navigation, isSeller }: Props) => {
   const [loading, setLoading] = useState(false);
 
   const handleMessage = async () => {
@@ -36,7 +39,7 @@ const SellerRow = ({ seller, location, bicycleId, navigation, isSeller }: Props)
           fullName: seller.fullName ?? 'Người bán',
           avatarUrl: seller.avatarUrl,
         },
-        bicycleContext: { id: bicycleId },
+        bicycleContext: { id: bicycleId, name: bicycleName, image: bicycleImage, price: bicyclePrice },
       });
     } catch {
       showToast('Không thể mở chat, thử lại sau');

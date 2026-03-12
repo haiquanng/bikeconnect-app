@@ -1,12 +1,21 @@
 import { apiClient } from './apiClient';
 
+export interface ApiMessageBicycle {
+  _id: string;
+  title: string;
+  price: number;
+  condition: string;
+  status: string;
+  images?: Array<string | { url: string }>;
+}
+
 export interface ApiMessage {
   _id: string;
   conversationId: string;
   senderId: string;
   content: string;
   type: 'TEXT' | 'PRODUCT' | 'IMAGE' | 'SYSTEM';
-  bicycleId?: string;
+  bicycleId?: string | ApiMessageBicycle;
   isRead: boolean;
   createdAt: string;
   updatedAt: string;
@@ -70,6 +79,14 @@ export const conversationService = {
     const res: any = await apiClient.post(
       `/conversations/${conversationId}/messages`,
       { content, type: 'TEXT' },
+    );
+    return res.data ?? res.message;
+  },
+
+  sendProductMessage: async (conversationId: string, bicycleId: string): Promise<ApiMessage> => {
+    const res: any = await apiClient.post(
+      `/conversations/${conversationId}/messages`,
+      { content: '[Tin đăng xe đạp]', type: 'PRODUCT', bicycleId },
     );
     return res.data ?? res.message;
   },

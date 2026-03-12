@@ -36,5 +36,6 @@ export interface ChatDetailParams {
     id: string;
     name?: string;
     image?: string;
+    price?: number;
   };
 }
