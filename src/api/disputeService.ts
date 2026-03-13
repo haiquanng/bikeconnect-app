@@ -19,6 +19,7 @@ export interface CreateDisputeParams {
   orderId: string;
   disputeType: DisputeType;
   reason: string;
+  evidenceImages?: string[];
 }
 
 export const disputeService = {
