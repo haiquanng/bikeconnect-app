@@ -33,9 +33,11 @@ const TXN_LABEL: Record<string, string> = {
   DEPOSIT: 'Nạp tiền',
   WITHDRAW: 'Rút tiền',
   ESCROW_IN: 'Thanh toán đơn hàng',
-  ESCROW_OUT: 'Hoàn tiền',
-  FULL: 'Thanh toán toàn bộ',
-  REMAINING: 'Thanh toán phần còn lại',
+  ESCROW_RELEASE: 'Nhận tiền từ đơn hàng',
+  REFUND: 'Hoàn tiền',
+  FORFEIT: 'Tịch ký quỹ',
+  SHIPPING_FEE: 'Phí vận chuyển',
+  PACKAGE_PURCHASE: 'Mua gói đăng bài',
 };
 
 const DEPOSIT_PRESETS = [50_000, 100_000, 200_000, 500_000, 1_000_000];
