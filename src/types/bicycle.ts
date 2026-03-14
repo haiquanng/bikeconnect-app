@@ -1,7 +1,7 @@
 // Bicycle / Listing Types
 
 export type BicycleCondition = 'NEW' | 'LIKE_NEW' | 'GOOD' | 'FAIR' | 'POOR';
-export type BicycleStatus = 'PENDING' | 'APPROVED' | 'RESERVED' | 'SOLD' | 'HIDDEN' | 'REJECTED';
+export type BicycleStatus = 'PENDING' | 'APPROVED' | 'RESERVED' | 'SOLD' | 'HIDDEN' | 'REJECTED' | 'VIOLATED';
 
 export interface BicycleListing {
   _id: string;

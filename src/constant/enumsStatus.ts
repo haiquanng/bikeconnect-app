@@ -73,6 +73,7 @@ const STATUS_TABS: { label: string; value: BicycleStatus | undefined }[] = [
   { label: 'Đã bán', value: 'SOLD' },
   { label: 'Bị ẩn', value: 'HIDDEN' },
   { label: 'Từ chối', value: 'REJECTED' },
+  { label: 'Vi phạm', value: 'VIOLATED' },
 ];
 
 const STATUS_CONFIG: Record<BicycleStatus, { label: string; color: string; bg: string }> = {
@@ -82,6 +83,7 @@ const STATUS_CONFIG: Record<BicycleStatus, { label: string; color: string; bg: s
   SOLD:     { label: 'Đã bán',     color: '#374151', bg: '#F3F4F6' },
   HIDDEN:   { label: 'Bị ẩn',      color: '#6B7280', bg: '#F9FAFB' },
   REJECTED: { label: 'Từ chối',    color: '#991B1B', bg: '#FEE2E2' },
+  VIOLATED: { label: 'Vi phạm',    color: '#7F1D1D', bg: '#FFE4E6' },
 };
 
 export { STATUS_LABEL, STATUS_COLOR, STATUS_LABEL_SELLERS, STATUS_TABS, STATUS_CONFIG };

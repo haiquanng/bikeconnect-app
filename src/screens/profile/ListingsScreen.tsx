@@ -136,6 +136,7 @@ const ListingsScreen = ({ navigation }: any) => {
     const canShow = item.status === 'HIDDEN';
     const isReserved = item.status === 'RESERVED';
     const isRejected = item.status === 'REJECTED';
+    const isViolated = item.status === 'VIOLATED';
 
     return (
       <TouchableOpacity
@@ -243,6 +244,14 @@ const ListingsScreen = ({ navigation }: any) => {
                   <Icon name="document-text-outline" size={14} color="#991B1B" />
                   <Text style={styles.reportBtnText}>Xem báo cáo</Text>
                 </TouchableOpacity>
+              )}
+              {isViolated && (
+                <View style={styles.violatedBanner}>
+                  <Icon name="warning-outline" size={13} color="#7F1D1D" />
+                  <Text style={styles.violatedBannerText}>
+                    Tin đăng vi phạm chính sách. Liên hệ hỗ trợ để yêu cầu mở lại.
+                  </Text>
+                </View>
               )}
             </View>
           </View>
@@ -604,6 +613,22 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#991B1B',
+  },
+  violatedBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 4,
+    marginTop: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#FFE4E6',
+  },
+  violatedBannerText: {
+    flex: 1,
+    fontSize: 11,
+    color: '#7F1D1D',
+    lineHeight: 16,
   },
   emptyContainer: {
     flex: 1,
