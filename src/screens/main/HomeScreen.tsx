@@ -25,7 +25,6 @@ import BicycleFeaturedCard from '../../components/molecules/BicycleFeaturedCard'
 import BicycleListCard from '../../components/molecules/BicycleListCard';
 import { SCROLL_TO_TOP_EVENT } from '../../components/organisms/CustomTabBar';
 
-/* ─── Header ─── */
 const HomeHeader = ({
   user,
   onNotification,
@@ -55,7 +54,6 @@ const HomeHeader = ({
   </View>
 );
 
-/* ─── Search bar ─── */
 const HomeSearchBar = ({ onPress }: { onPress: () => void }) => (
   <TouchableOpacity
     style={styles.searchBar}
@@ -72,7 +70,7 @@ const HomeBanner = ({ width }: { width: number }) => (
   <View style={styles.section}>
     <View style={[styles.bannerCard, { width: width - 32 }]}>
       <View style={styles.bannerContent}>
-        <Text style={styles.bannerBadge}>HOT</Text>
+        <Text style={styles.bannerBadge}>Chọn xe cho bạn</Text>
         <Text style={styles.bannerTitle}>Xe đạp giá tốt</Text>
         <Text style={styles.bannerSub}>Mua bán xe đạp uy tín</Text>
       </View>
@@ -87,7 +85,6 @@ const HomeBanner = ({ width }: { width: number }) => (
   </View>
 );
 
-/* ─── Category item ─── */
 const HomeCategoryItem = ({
   category,
   onPress,
@@ -117,7 +114,6 @@ const HomeCategoryItem = ({
   </TouchableOpacity>
 );
 
-/* ─── Section header ─── */
 const SectionHeader = ({
   title,
   onSeeAll,
@@ -135,7 +131,6 @@ const SectionHeader = ({
   </View>
 );
 
-/* ─── Main Screen ─── */
 const HomeScreen = ({ navigation }: any) => {
   const { width } = useWindowDimensions();
   const user = useAppSelector(state => state.auth.user);

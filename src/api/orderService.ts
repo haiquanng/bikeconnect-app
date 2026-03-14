@@ -56,4 +56,9 @@ export const orderService = {
     const response = await apiClient.put<OrderResponse>(`/orders/${id}/reject`, { reason });
     return response.data;
   },
+
+  async receiveOrder(id: string): Promise<Order> {
+    const response = await apiClient.put<OrderResponse>(`/orders/${id}/receive`);
+    return response.data;
+  },
 };

@@ -1,49 +1,90 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   Image,
   TouchableOpacity,
+  ActivityIndicator,
   StyleSheet,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { colors } from '../../../theme';
+import { conversationService } from '../../../api/conversationService';
 import { showToast } from '../../../utils/toast';
 import type { BicycleListing } from '../../../types/bicycle';
 
 interface Props {
   seller: BicycleListing['seller'];
   location: BicycleListing['location'];
+  bicycleId: string;
+  bicycleName?: string;
+  bicycleImage?: string;
+  bicyclePrice?: number;
+  navigation: any;
+  isSeller: boolean;
 }
 
-const SellerRow = ({ seller, location }: Props) => (
-  <View style={styles.row}>
-    <View style={styles.left}>
-      <View style={styles.avatar}>
-        {seller?.avatarUrl ? (
-          <Image source={{ uri: seller.avatarUrl }} style={styles.avatarImg} />
-        ) : (
-          <Icon name="person" size={24} color={colors.gray[400]} />
-        )}
+const SellerRow = ({ seller, location, bicycleId, bicycleName, bicycleImage, bicyclePrice, navigation, isSeller }: Props) => {
+  const [loading, setLoading] = useState(false);
+
+  const handleMessage = async () => {
+    if (!seller?._id) return;
+    setLoading(true);
+    try {
+      const { conversationId } = await conversationService.createOrFind(seller._id);
+      navigation.navigate('ChatDetail', {
+        conversationId,
+        partner: {
+          _id: seller._id,
+          fullName: seller.fullName ?? 'Người bán',
+          avatarUrl: seller.avatarUrl,
+        },
+        bicycleContext: { id: bicycleId, name: bicycleName, image: bicycleImage, price: bicyclePrice },
+      });
+    } catch {
+      showToast('Không thể mở chat, thử lại sau');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <View style={styles.row}>
+      <View style={styles.left}>
+        <View style={styles.avatar}>
+          {seller?.avatarUrl ? (
+            <Image source={{ uri: seller.avatarUrl }} style={styles.avatarImg} />
+          ) : (
+            <Icon name="person" size={24} color={colors.gray[400]} />
+          )}
+        </View>
+        <View style={styles.info}>
+          <Text style={styles.by}>Người bán</Text>
+          <Text style={styles.name} numberOfLines={1}>
+            {seller?.fullName ?? 'Ẩn danh'}
+          </Text>
+          {location?.city && (
+            <Text style={styles.location}>{location.city}</Text>
+          )}
+        </View>
       </View>
-      <View style={styles.info}>
-        <Text style={styles.by}>Người bán</Text>
-        <Text style={styles.name} numberOfLines={1}>
-          {seller?.fullName ?? 'Ẩn danh'}
-        </Text>
-        {location?.city && (
-          <Text style={styles.location}>{location.city}</Text>
-        )}
-      </View>
+
+      {!isSeller && (
+        <TouchableOpacity
+          style={[styles.msgBtn, loading && styles.msgBtnDisabled]}
+          onPress={handleMessage}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator size="small" color={colors.textPrimary} />
+          ) : (
+            <Text style={styles.msgBtnText}>Nhắn tin</Text>
+          )}
+        </TouchableOpacity>
+      )}
     </View>
-    <TouchableOpacity
-      style={styles.msgBtn}
-      onPress={() => showToast('Đang phát triển')}
-    >
-      <Text style={styles.msgBtnText}>Nhắn tin</Text>
-    </TouchableOpacity>
-  </View>
-);
+  );
+};
 
 const styles = StyleSheet.create({
   row: {
@@ -74,7 +115,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1.5,
     borderColor: colors.textPrimary,
+    minWidth: 80,
+    alignItems: 'center',
   },
+  msgBtnDisabled: { opacity: 0.5 },
   msgBtnText: { fontSize: 13, fontWeight: '600', color: colors.textPrimary },
 });
 

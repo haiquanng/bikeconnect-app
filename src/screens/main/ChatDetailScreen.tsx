@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,199 +9,396 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  Dimensions,
 } from 'react-native';
+
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
+import { launchImageLibrary } from 'react-native-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { colors } from '../../theme';
-import { Conversation, Message } from '../../types/conversation';
+import { useAppSelector } from '../../redux/hooks';
+import { conversationService, ApiMessage, ApiMessageBicycle } from '../../api/conversationService';
+import { uploadImageToCloudinary } from '../../api/uploadService';
+import { socketService } from '../../services/socketService';
+import type { ChatDetailParams } from '../../types/conversation';
+
+const formatTime = (iso: string) =>
+  new Date(iso).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+
+const formatPrice = (price: number) =>
+  price.toLocaleString('vi-VN') + 'đ';
 
 const ChatDetailScreen = ({ route, navigation }: any) => {
-  const { conversation }: { conversation: Conversation } = route.params;
-  const [messages, setMessages] = useState<Message[]>(conversation.messages);
+  const { conversationId, partner, bicycleContext }: ChatDetailParams = route.params;
+  const currentUser = useAppSelector(state => state.auth.user);
+  const idToken = useAppSelector(state => state.auth.idToken);
+
+  const [messages, setMessages] = useState<ApiMessage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
   const [inputText, setInputText] = useState('');
+  const [isOnline, setIsOnline] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const [previewUri, setPreviewUri] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
+  const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleSend = () => {
-    if (inputText.trim()) {
-      const newMessage: Message = {
-        id: `msg_${Date.now()}`,
-        senderId: 'me',
-        text: inputText.trim(),
-        timestamp: new Date().toLocaleTimeString('vi-VN', {
-          hour: '2-digit',
-          minute: '2-digit',
-        }),
-        isRead: false,
-      };
+  // Load messages
+  const loadMessages = useCallback(async () => {
+    try {
+      const { messages: fetched } = await conversationService.getMessages(conversationId);
+      setMessages(fetched);
+    } catch {
+      // silent
+    } finally {
+      setLoading(false);
+    }
+  }, [conversationId]);
 
-      setMessages([...messages, newMessage]);
-      setInputText('');
+  useEffect(() => {
+    loadMessages();
+  }, [loadMessages]);
 
-      // Scroll to bottom
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+  // Socket setup
+  useEffect(() => {
+    if (!idToken) return;
+    if (!socketService.connected) socketService.connect(idToken);
+
+    const unsubMessage = socketService.on('new_message', event => {
+      if (event.conversationId !== conversationId) return;
+      setMessages(prev => [...prev, event.message]);
+      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+    });
+
+    const unsubTyping = socketService.on('typing', event => {
+      if (event.conversationId !== conversationId) return;
+      setIsTyping(true);
+    });
+
+    const unsubStopTyping = socketService.on('stop_typing', event => {
+      if (event.conversationId !== conversationId) return;
+      setIsTyping(false);
+    });
+
+    const unsubOnline = socketService.on('user_online', ({ userId }) => {
+      if (userId === partner._id) setIsOnline(true);
+    });
+
+    const unsubOffline = socketService.on('user_offline', ({ userId }) => {
+      if (userId === partner._id) setIsOnline(false);
+    });
+
+    return () => {
+      unsubMessage();
+      unsubTyping();
+      unsubStopTyping();
+      unsubOnline();
+      unsubOffline();
+    };
+  }, [conversationId, idToken, partner._id]);
+
+  // Mark as read on focus
+  useFocusEffect(
+    useCallback(() => {
+      conversationService.markAsRead(conversationId).catch(() => {});
+    }, [conversationId]),
+  );
+
+  const handleInputChange = (text: string) => {
+    setInputText(text);
+    socketService.emitTyping(conversationId, partner._id);
+    if (typingTimer.current) clearTimeout(typingTimer.current);
+    typingTimer.current = setTimeout(() => {
+      socketService.emitStopTyping(conversationId, partner._id);
+    }, 1500);
+  };
+
+  const handleSend = async () => {
+    const text = inputText.trim();
+    if (!text || sending) return;
+    setSending(true);
+    setInputText('');
+    socketService.emitStopTyping(conversationId, partner._id);
+    try {
+      const sent = await conversationService.sendMessage(conversationId, text);
+      if (sent) {
+        setMessages(prev => [...prev, sent]);
+        setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+      }
+    } catch {
+      setInputText(text);
+    } finally {
+      setSending(false);
     }
   };
 
-  const renderMessage = ({ item }: { item: Message }) => {
-    const isMyMessage = item.senderId === 'me';
+  const handleSendImage = async () => {
+    if (sending) return;
+    const result = await launchImageLibrary({ mediaType: 'photo', quality: 0.8, selectionLimit: 1 });
+    const asset = result.assets?.[0];
+    if (!asset?.uri) return;
+    setSending(true);
+    try {
+      const { url } = await uploadImageToCloudinary(asset.uri);
+      const sent = await conversationService.sendImageMessage(conversationId, url);
+      if (sent) {
+        setMessages(prev => [...prev, sent]);
+        setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+      }
+    } catch {
+      Alert.alert('Lỗi', 'Không thể gửi ảnh, thử lại sau.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleSendProduct = async () => {
+    if (!bicycleContext?.id || sending) return;
+    setSending(true);
+    try {
+      const sent = await conversationService.sendProductMessage(conversationId, bicycleContext.id);
+      if (sent) {
+        setMessages(prev => [...prev, sent]);
+        setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+      }
+    } catch {
+      // silent
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const getImageUri = (img: string | { url: string } | undefined): string | undefined => {
+    if (!img) { return undefined; }
+    return typeof img === 'string' ? img : img.url;
+  };
+
+  const renderProductCard = (bicycle: ApiMessageBicycle, isMe: boolean) => {
+    const imageUri = getImageUri(bicycle.images?.[0]);
+    return (
+    <TouchableOpacity
+      style={[styles.productCard, isMe ? styles.productCardMe : styles.productCardThem]}
+      onPress={() => navigation.navigate('BicycleDetail', { id: bicycle._id })}
+      activeOpacity={0.8}
+    >
+      {imageUri ? (
+        <Image source={{ uri: imageUri }} style={styles.productImage} />
+      ) : (
+        <View style={[styles.productImage, styles.productImageFallback]}>
+          <Icon name="bicycle-outline" size={28} color={colors.gray[400]} />
+        </View>
+      )}
+      <View style={styles.productInfo}>
+        <Text style={styles.productTitle} numberOfLines={2}>{bicycle.title}</Text>
+        <Text style={styles.productPrice}>{formatPrice(bicycle.price)}</Text>
+        <Text style={styles.productCondition}>{bicycle.condition}</Text>
+      </View>
+    </TouchableOpacity>
+    );
+  };
+
+  const renderMessage = ({ item }: { item: ApiMessage }) => {
+    const isMe = item.senderId === currentUser?.id;
+    const bicycle = item.type === 'PRODUCT' && item.bicycleId && typeof item.bicycleId === 'object'
+      ? item.bicycleId as ApiMessageBicycle
+      : null;
+
+    if (item.type === 'SYSTEM') {
+      return (
+        <View style={styles.systemMessageContainer}>
+          <Text style={styles.systemMessageText}>{item.content}</Text>
+        </View>
+      );
+    }
 
     return (
       <View
         style={[
           styles.messageContainer,
-          isMyMessage
-            ? styles.myMessageContainer
-            : styles.theirMessageContainer,
+          isMe ? styles.myMessageContainer : styles.theirMessageContainer,
         ]}
       >
-        <View
-          style={[
-            styles.messageBubble,
-            isMyMessage ? styles.myMessageBubble : styles.theirMessageBubble,
-          ]}
-        >
-          <Text
+        {bicycle ? (
+          <>
+            {renderProductCard(bicycle, isMe)}
+            <Text style={[styles.messageTime, isMe ? styles.myMessageTime : styles.theirMessageTime]}>
+              {formatTime(item.createdAt)}
+            </Text>
+          </>
+        ) : item.type === 'IMAGE' ? (
+          <>
+            <TouchableOpacity activeOpacity={0.9} onPress={() => setPreviewUri(item.content)}>
+              <Image source={{ uri: item.content }} style={styles.imageMessage} resizeMode="cover" />
+            </TouchableOpacity>
+            <Text style={[styles.messageTime, isMe ? styles.myMessageTime : styles.theirMessageTime]}>
+              {formatTime(item.createdAt)}
+            </Text>
+          </>
+        ) : (
+          <View
             style={[
-              styles.messageText,
-              isMyMessage ? styles.myMessageText : styles.theirMessageText,
+              styles.messageBubble,
+              isMe ? styles.myMessageBubble : styles.theirMessageBubble,
             ]}
           >
-            {item.text}
-          </Text>
-          <Text
-            style={[
-              styles.messageTime,
-              isMyMessage ? styles.myMessageTime : styles.theirMessageTime,
-            ]}
-          >
-            {item.timestamp}
-          </Text>
-        </View>
+            <Text style={[styles.messageText, isMe ? styles.myMessageText : styles.theirMessageText]}>
+              {item.content}
+            </Text>
+            <Text style={[styles.messageTime, isMe ? styles.myMessageTime : styles.theirMessageTime]}>
+              {formatTime(item.createdAt)}
+            </Text>
+          </View>
+        )}
       </View>
     );
   };
-
-  const renderHeader = () => (
-    <View style={styles.productInfo}>
-      <Image
-        source={{ uri: conversation.productImage }}
-        style={styles.productImage}
-      />
-      <View style={styles.productDetails}>
-        <Text style={styles.productName} numberOfLines={1}>
-          {conversation.productName}
-        </Text>
-        <TouchableOpacity>
-          <Text style={styles.viewProductLink}>Xem sản phẩm</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Icon name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
 
         <View style={styles.headerCenter}>
-          <Image
-            source={{ uri: conversation.buyerAvatar }}
-            style={styles.avatar}
-          />
+          <View style={styles.avatarWrapper}>
+            {partner.avatarUrl ? (
+              <Image source={{ uri: partner.avatarUrl }} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatar, styles.avatarFallback]}>
+                <Icon name="person" size={20} color={colors.gray[400]} />
+              </View>
+            )}
+          </View>
           <View style={styles.headerInfo}>
-            <Text style={styles.headerName}>{conversation.buyerName}</Text>
-            {conversation.isOnline && (
+            <Text style={styles.headerName}>{partner.fullName}</Text>
+            {isTyping ? (
+              <Text style={styles.typingText}>Đang nhập...</Text>
+            ) : isOnline ? (
               <View style={styles.onlineStatus}>
                 <View style={styles.onlineDot} />
                 <Text style={styles.onlineText}>Đang hoạt động</Text>
               </View>
-            )}
+            ) : null}
           </View>
         </View>
 
         <View style={styles.headerActions}>
           <TouchableOpacity style={styles.iconButton}>
-            <Icon name="call-outline" size={24} color={colors.textPrimary} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}>
-            <Icon
-              name="ellipsis-vertical"
-              size={24}
-              color={colors.textPrimary}
-            />
+            <Icon name="ellipsis-vertical" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
       </View>
 
       <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
       >
-        {/* Messages */}
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          keyExtractor={item => item.id}
-          renderItem={renderMessage}
-          contentContainerStyle={styles.messagesList}
-          ListHeaderComponent={renderHeader}
-          onContentSizeChange={() =>
-            flatListRef.current?.scrollToEnd({ animated: false })
-          }
-        />
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator color={colors.primaryBlue} />
+          </View>
+        ) : (
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            keyExtractor={item => item._id}
+            renderItem={renderMessage}
+            contentContainerStyle={styles.messagesList}
+            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+            ListEmptyComponent={
+              <Text style={styles.emptyText}>Hãy bắt đầu cuộc trò chuyện</Text>
+            }
+          />
+        )}
+
+        {/* Bicycle context banner */}
+        {bicycleContext && (
+          <TouchableOpacity
+            style={styles.bicycleBanner}
+            onPress={() => navigation.navigate('BicycleDetail', { id: bicycleContext?.id })}
+            activeOpacity={0.8}
+          >
+            {bicycleContext.image ? (
+              <Image source={{ uri: bicycleContext.image }} style={styles.bannerImage} />
+            ) : (
+              <View style={[styles.bannerImage, styles.bannerImageFallback]}>
+                <Icon name="bicycle-outline" size={16} color={colors.gray[400]} />
+              </View>
+            )}
+            <View style={styles.bannerTextGroup}>
+              <Text style={styles.bannerName} numberOfLines={1}>{bicycleContext.name ?? 'Xem tin đăng'}</Text>
+              {bicycleContext.price != null && (
+                <Text style={styles.bannerPrice}>{formatPrice(bicycleContext.price)}</Text>
+              )}
+            </View>
+            <TouchableOpacity
+              style={[styles.bannerSendBtn, sending && styles.bannerSendBtnDisabled]}
+              onPress={handleSendProduct}
+              disabled={sending}
+            >
+              <Text style={styles.bannerSendText}>Gửi tin đăng</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        )}
 
         {/* Input */}
         <View style={styles.inputContainer}>
-          <TouchableOpacity style={styles.attachButton}>
-            <Icon name="add-circle-outline" size={28} color={colors.primary} />
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={handleSendImage}
+            disabled={sending}
+          >
+            <Icon name="add-circle-outline" size={32} color={colors.gray[500]} />
           </TouchableOpacity>
 
-          <View style={styles.inputWrapper}>
+          <View style={styles.inputRow}>
             <TextInput
               style={styles.input}
-              placeholder="Nhập tin nhắn..."
+              placeholder="Soạn tin..."
               placeholderTextColor={colors.gray[400]}
               value={inputText}
-              onChangeText={setInputText}
+              onChangeText={handleInputChange}
               multiline
               maxLength={500}
             />
+            {inputText.trim() ? (
+              <TouchableOpacity
+                style={styles.sendButton}
+                onPress={handleSend}
+                disabled={sending}
+              >
+                {sending ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <Icon name="send" size={18} color={colors.white} />
+                )}
+              </TouchableOpacity>
+            ) : null}
           </View>
-
-          <TouchableOpacity
-            style={[
-              styles.sendButton,
-              inputText.trim() && styles.sendButtonActive,
-            ]}
-            onPress={handleSend}
-            disabled={!inputText.trim()}
-          >
-            <Icon
-              name="send"
-              size={20}
-              color={inputText.trim() ? colors.white : colors.gray[400]}
-            />
-          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      <Modal visible={!!previewUri} transparent animationType="fade" onRequestClose={() => setPreviewUri(null)}>
+        <TouchableOpacity style={styles.previewOverlay} activeOpacity={1} onPress={() => setPreviewUri(null)}>
+          {previewUri && (
+            <Image source={{ uri: previewUri }} style={{ width: SCREEN_W, height: SCREEN_H }} resizeMode="contain" />
+          )}
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.white,
-  },
+  container: { flex: 1, backgroundColor: colors.white },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -210,139 +407,88 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.gray[100],
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  headerCenter: {
-    flex: 1,
+  backButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center', marginRight: 8 },
+  headerCenter: { flex: 1, flexDirection: 'row', alignItems: 'center' },
+  avatarWrapper: { marginRight: 12 },
+  avatar: { width: 40, height: 40, borderRadius: 20 },
+  avatarFallback: { backgroundColor: colors.gray[200], justifyContent: 'center', alignItems: 'center' },
+  headerInfo: { flex: 1 },
+  headerName: { fontSize: 16, fontWeight: '600', color: colors.textPrimary, marginBottom: 2 },
+  onlineStatus: { flexDirection: 'row', alignItems: 'center' },
+  onlineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success, marginRight: 6 },
+  onlineText: { fontSize: 12, color: colors.textSecondary },
+  typingText: { fontSize: 12, color: colors.primaryBlue, fontStyle: 'italic' },
+  headerActions: { flexDirection: 'row', gap: 8 },
+  iconButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+  keyboardView: { flex: 1 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  messagesList: { paddingHorizontal: 16, paddingVertical: 16, flexGrow: 1 },
+  emptyText: { textAlign: 'center', color: colors.textSecondary, marginTop: 40, fontSize: 14 },
+
+  // Text messages
+  messageContainer: { marginBottom: 12, maxWidth: '80%' },
+  myMessageContainer: { alignSelf: 'flex-end' },
+  theirMessageContainer: { alignSelf: 'flex-start' },
+  messageBubble: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 16 },
+  myMessageBubble: { backgroundColor: colors.primaryGreen, borderBottomRightRadius: 4 },
+  theirMessageBubble: { backgroundColor: colors.gray[100], borderBottomLeftRadius: 4 },
+  messageText: { fontSize: 15, lineHeight: 20, marginBottom: 4 },
+  myMessageText: { color: colors.white },
+  theirMessageText: { color: colors.textPrimary },
+  messageTime: { fontSize: 11 },
+  myMessageTime: { color: colors.gray[300], textAlign: 'right' },
+  theirMessageTime: { color: colors.textSecondary },
+
+  // System message
+  systemMessageContainer: { alignSelf: 'center', marginBottom: 8, paddingHorizontal: 12, paddingVertical: 4, backgroundColor: colors.gray[100], borderRadius: 12 },
+  systemMessageText: { fontSize: 12, color: colors.error, textAlign: 'center' },
+
+  // Product card in message
+  productCard: {
     flexDirection: 'row',
     alignItems: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    overflow: 'hidden',
+    backgroundColor: colors.white,
+    width: 260,
   },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.gray[200],
-    marginRight: 12,
-  },
-  headerInfo: {
-    flex: 1,
-  },
-  headerName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: 2,
-  },
-  onlineStatus: {
+  productCardMe: { borderColor: colors.gray[300] },
+  productCardThem: { borderColor: colors.gray[200] },
+  productImage: { width: 72, height: 72 },
+  productImageFallback: { backgroundColor: colors.gray[100], justifyContent: 'center', alignItems: 'center' },
+  productInfo: { flex: 1, padding: 10 },
+  productTitle: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, marginBottom: 4, lineHeight: 18 },
+  productPrice: { fontSize: 13, fontWeight: '700', color: colors.primaryBlue, marginBottom: 2 },
+  productCondition: { fontSize: 11, color: colors.textSecondary },
+  imageMessage: { width: 200, height: 200, borderRadius: 12, marginBottom: 4 },
+
+  bicycleBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  onlineDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.success,
-    marginRight: 6,
-  },
-  onlineText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  iconButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  productInfo: {
-    flexDirection: 'row',
-    padding: 12,
-    backgroundColor: colors.gray[50],
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  productImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    backgroundColor: colors.gray[200],
-  },
-  productDetails: {
-    flex: 1,
-    marginLeft: 12,
-    justifyContent: 'center',
-  },
-  productName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: 4,
-  },
-  viewProductLink: {
-    fontSize: 13,
-    color: colors.primaryBlue,
-    fontWeight: '500',
-  },
-  messagesList: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-  },
-  messageContainer: {
-    marginBottom: 12,
-    maxWidth: '80%',
-  },
-  myMessageContainer: {
-    alignSelf: 'flex-end',
-  },
-  theirMessageContainer: {
-    alignSelf: 'flex-start',
-  },
-  messageBubble: {
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.gray[100],
+    backgroundColor: colors.gray[50],
+    gap: 10,
   },
-  myMessageBubble: {
+  bannerImage: { width: 36, height: 36, borderRadius: 6, backgroundColor: colors.gray[200] },
+  bannerImageFallback: { justifyContent: 'center', alignItems: 'center' },
+  bannerTextGroup: { flex: 1, justifyContent: 'center' },
+  bannerName: { fontSize: 13, fontWeight: '600', color: colors.textPrimary },
+  bannerPrice: { fontSize: 12, color: colors.primaryBlue, fontWeight: '700', marginTop: 2 },
+  bannerSendBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
     backgroundColor: colors.textPrimary,
-    borderBottomRightRadius: 4,
   },
-  theirMessageBubble: {
-    backgroundColor: colors.gray[100],
-    borderBottomLeftRadius: 4,
-  },
-  messageText: {
-    fontSize: 15,
-    lineHeight: 20,
-    marginBottom: 4,
-  },
-  myMessageText: {
-    color: colors.white,
-  },
-  theirMessageText: {
-    color: colors.textPrimary,
-  },
-  messageTime: {
-    fontSize: 11,
-  },
-  myMessageTime: {
-    color: colors.gray[300],
-    textAlign: 'right',
-  },
-  theirMessageTime: {
-    color: colors.textSecondary,
-  },
+  bannerSendBtnDisabled: { opacity: 0.5 },
+  bannerSendText: { fontSize: 12, fontWeight: '600', color: colors.white },
+
+  // Input
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -352,37 +498,30 @@ const styles = StyleSheet.create({
     borderTopColor: colors.gray[100],
     backgroundColor: colors.white,
   },
-  attachButton: {
-    width: 40,
-    height: 40,
+  inputWrapper: { flex: 1 },
+  input: { flex: 1, fontSize: 15, color: colors.textPrimary, maxHeight: 80, paddingTop: 0, paddingBottom: 0, textAlignVertical: 'center' },
+  sendButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 8,
+    marginLeft: 6,
+    backgroundColor: colors.primaryBlue,
+    alignSelf: 'center',
   },
-  inputWrapper: {
+  sendButtonActive: { backgroundColor: colors.primaryBlue },
+  addButton: { justifyContent: 'center', alignItems: 'center', marginRight: 8 },
+  previewOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', justifyContent: 'center', alignItems: 'center' },
+  inputRow: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.gray[100],
-    borderRadius: 20,
-    paddingHorizontal: 16,
+    borderRadius: 22,
+    paddingHorizontal: 14,
     paddingVertical: 8,
     maxHeight: 100,
-  },
-  input: {
-    fontSize: 15,
-    color: colors.textPrimary,
-    maxHeight: 80,
-  },
-  sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 8,
-    backgroundColor: colors.gray[200],
-  },
-  sendButtonActive: {
-    backgroundColor: colors.primaryBlue,
   },
 });
 

@@ -9,6 +9,7 @@ import {
   Image,
   Alert,
 } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { colors } from '../../theme';
@@ -49,11 +50,14 @@ const formatDate = (s?: string) => {
 const InspectionReportScreen = ({ navigation, route }: any) => {
   const bicycleId: string = route.params?.bicycleId;
   const bicycleTitle: string = route.params?.bicycleTitle ?? 'Xe đạp';
+  const rejectionReason: string | undefined = route.params?.rejectionReason;
+  const hasChangedSinceRejection: boolean = route.params?.hasChangedSinceRejection ?? false;
 
   const [report, setReport] = useState<InspectionReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [resubmitting, setResubmitting] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -70,14 +74,42 @@ const InspectionReportScreen = ({ navigation, route }: any) => {
   }, [bicycleId]);
 
   const handleResubmit = () => {
-    Alert.alert(
-      'Cập nhật và gửi lại',
-      'Bạn sẽ chỉnh sửa thông tin xe và gửi lại để kiểm định.',
-      [
-        { text: 'Huỷ', style: 'cancel' },
-        { text: 'Tiếp tục', onPress: () => navigation.navigate('EditListing', { id: bicycleId }) },
-      ],
-    );
+    if (hasChangedSinceRejection) {
+      // Đã có thay đổi → gọi resubmit trực tiếp, không cần qua EditListing
+      Alert.alert(
+        'Gửi lại kiểm định',
+        'Tin đăng đã được cập nhật. Xác nhận gửi lại để kiểm định?',
+        [
+          { text: 'Huỷ', style: 'cancel' },
+          {
+            text: 'Gửi lại',
+            onPress: async () => {
+              setResubmitting(true);
+              try {
+                await bicycleService.resubmitBicycle(bicycleId);
+                Toast.show({ type: 'success', text1: 'Đã gửi lại!', text2: 'Tin đăng đang chờ kiểm định lại' });
+                navigation.navigate('Listings');
+              } catch (e: any) {
+                const msg = e?.response?.data?.message ?? 'Gửi lại thất bại, vui lòng thử lại';
+                Toast.show({ type: 'error', text1: msg });
+              } finally {
+                setResubmitting(false);
+              }
+            },
+          },
+        ],
+      );
+    } else {
+      // Chưa có thay đổi → vào EditListing chỉnh sửa, resubmit sẽ tự gọi sau khi save
+      Alert.alert(
+        'Cập nhật và gửi lại',
+        'Bạn cần chỉnh sửa thông tin xe. Sau khi lưu, tin đăng sẽ được gửi lại tự động.',
+        [
+          { text: 'Huỷ', style: 'cancel' },
+          { text: 'Chỉnh sửa', onPress: () => navigation.navigate('EditListing', { id: bicycleId, fromRejected: true }) },
+        ],
+      );
+    }
   };
 
   return (
@@ -123,6 +155,23 @@ const InspectionReportScreen = ({ navigation, route }: any) => {
                 </View>
               )}
             </View>
+
+            {/* Rejection reason */}
+            {rejectionReason ? (
+              <View style={styles.rejectionCard}>
+                <View style={styles.rejectionHeader}>
+                  <Icon name="alert-circle" size={18} color="#DC2626" />
+                  <Text style={styles.rejectionTitle}>Lý do từ chối</Text>
+                </View>
+                <Text style={styles.rejectionText}>{rejectionReason}</Text>
+                {hasChangedSinceRejection && (
+                  <View style={styles.updatedBadge}>
+                    <Icon name="checkmark-circle-outline" size={14} color="#065F46" />
+                    <Text style={styles.updatedBadgeText}>Đã cập nhật — sẵn sàng gửi lại</Text>
+                  </View>
+                )}
+              </View>
+            ) : null}
 
             {/* Conditions */}
             <View style={styles.card}>
@@ -203,9 +252,20 @@ const InspectionReportScreen = ({ navigation, route }: any) => {
 
           {/* Bottom action */}
           <View style={styles.bottomBar}>
-            <TouchableOpacity style={styles.resubmitBtn} onPress={handleResubmit} activeOpacity={0.85}>
-              <Icon name="refresh-outline" size={20} color={colors.white} />
-              <Text style={styles.resubmitBtnText}>Cập nhật và gửi lại</Text>
+            <TouchableOpacity
+              style={[styles.resubmitBtn, hasChangedSinceRejection && styles.resubmitBtnReady]}
+              onPress={handleResubmit}
+              disabled={resubmitting}
+              activeOpacity={0.85}
+            >
+              {resubmitting ? (
+                <ActivityIndicator size="small" color={colors.white} />
+              ) : (
+                <Icon name={hasChangedSinceRejection ? 'send-outline' : 'refresh-outline'} size={20} color={colors.white} />
+              )}
+              <Text style={styles.resubmitBtnText}>
+                {resubmitting ? 'Đang gửi...' : hasChangedSinceRejection ? 'Gửi lại kiểm định' : 'Cập nhật và gửi lại'}
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -299,8 +359,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     backgroundColor: colors.primaryGreen, borderRadius: 14, paddingVertical: 14,
   },
+  resubmitBtnReady: { backgroundColor: '#1D4ED8' },
   resubmitBtnText: { fontSize: 16, fontWeight: '700', color: colors.white },
   scrollSpacer: { height: 100 },
+
+  rejectionCard: {
+    backgroundColor: '#FEF2F2', borderRadius: 12, padding: 16,
+    borderWidth: 1, borderColor: '#FECACA', gap: 8,
+  },
+  rejectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  rejectionTitle: { fontSize: 14, fontWeight: '700', color: '#DC2626' },
+  rejectionText: { fontSize: 13, color: '#7F1D1D', lineHeight: 20 },
+  updatedBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: '#ECFDF5', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6,
+    alignSelf: 'flex-start',
+  },
+  updatedBadgeText: { fontSize: 12, fontWeight: '600', color: '#065F46' },
 
   previewOverlay: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,

@@ -17,44 +17,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { colors } from '../../theme';
 import { orderService } from '../../api/orderService';
 import type { Order, OrderStatus } from '../../types/order';
-
-const STATUS_LABEL: Record<OrderStatus, string> = {
-  WAITING_SELLER_CONFIRMATION: 'Chờ xác nhận',
-  CONFIRMED:                   'Đã xác nhận',
-  WAITING_FOR_PICKUP:          'Chờ lấy hàng',
-  RESERVED_FULL:               'Đã đặt chỗ',
-  RESERVED_DEPOSIT:            'Đã đặt cọc',
-  DEPOSIT_EXPIRED:             'Hết hạn đặt cọc',
-  PAYMENT_TIMEOUT:             'Hết giờ thanh toán',
-  REJECTED:                    'Đã từ chối',
-  IN_TRANSIT:                  'Đang giao hàng',
-  DELIVERED:                   'Đã giao',
-  WAITING_REMAINING_PAYMENT:   'Chờ thanh toán tiếp',
-  COMPLETED:                   'Hoàn thành',
-  FUNDS_RELEASED:              'Đã hoàn tiền',
-  CANCELLED:                   'Đã huỷ',
-  CANCELLED_BY_BUYER:          'Người mua huỷ',
-  DISPUTED:                    'Tranh chấp',
-};
-
-const STATUS_COLOR: Record<OrderStatus, string> = {
-  WAITING_SELLER_CONFIRMATION: colors.warning,
-  CONFIRMED:                   colors.info,
-  WAITING_FOR_PICKUP:          colors.info,
-  RESERVED_FULL:               colors.primaryGreen,
-  RESERVED_DEPOSIT:            colors.primaryGreen,
-  DEPOSIT_EXPIRED:             colors.error,
-  PAYMENT_TIMEOUT:             colors.error,
-  REJECTED:                    colors.error,
-  IN_TRANSIT:                  colors.info,
-  DELIVERED:                   colors.success,
-  WAITING_REMAINING_PAYMENT:   colors.warning,
-  COMPLETED:                   colors.success,
-  FUNDS_RELEASED:              colors.success,
-  CANCELLED:                   colors.error,
-  CANCELLED_BY_BUYER:          colors.error,
-  DISPUTED:                    colors.warning,
-};
+import { STATUS_LABEL_SELLERS, STATUS_COLOR } from '../../constant/enumsStatus';
 
 type TabKey = 'all' | 'pending' | 'processing' | 'completed' | 'cancelled';
 
@@ -83,7 +46,7 @@ const formatDate = (dateStr: string) => {
 };
 
 const OrderCard = ({ order, onPress }: { order: Order; onPress: () => void }) => {
-  const statusLabel = STATUS_LABEL[order.status] ?? order.status;
+  const statusLabel = STATUS_LABEL_SELLERS[order.status] ?? order.status;
   const statusColor = STATUS_COLOR[order.status] ?? colors.textSecondary;
   const needsAction = order.status === 'WAITING_SELLER_CONFIRMATION';
 
@@ -146,7 +109,6 @@ const SellerOrdersScreen = ({ navigation }: any) => {
   useFocusEffect(
     useCallback(() => {
       loadOrders();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []),
   );
 

@@ -2,10 +2,19 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { colors } from '../../theme';
-import { Conversation } from '../../types/conversation';
+import { ApiConversation } from '../../api/conversationService';
+
+const formatTime = (iso: string) => {
+  const d = new Date(iso);
+  const now = new Date();
+  if (d.toDateString() === now.toDateString()) {
+    return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  }
+  return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+};
 
 interface ConversationItemProps {
-  conversation: Conversation;
+  conversation: ApiConversation;
   onPress: () => void;
 }
 
@@ -13,14 +22,20 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
   conversation,
   onPress,
 }) => {
+  const partner = conversation.chatPartner;
+  const lastMsg = conversation.lastMessage;
+
   return (
     <TouchableOpacity style={styles.container} onPress={onPress}>
       {/* Avatar */}
       <View style={styles.avatarContainer}>
-        <Image
-          source={{ uri: conversation.buyerAvatar }}
-          style={styles.avatar}
-        />
+        {partner.avatarUrl ? (
+          <Image source={{ uri: partner.avatarUrl }} style={styles.avatar} />
+        ) : (
+          <View style={[styles.avatar, styles.avatarFallback]}>
+            <Icon name="person" size={24} color={colors.gray[400]} />
+          </View>
+        )}
         {conversation.isOnline && <View style={styles.onlineIndicator} />}
       </View>
 
@@ -28,16 +43,12 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
       <View style={styles.content}>
         <View style={styles.header}>
           <Text style={styles.name} numberOfLines={1}>
-            {conversation.buyerName}
+            {partner.fullName}
           </Text>
-          <Text style={styles.time}>{conversation.lastMessageTime}</Text>
+          {lastMsg && <Text style={styles.time}>{formatTime(lastMsg.createdAt)}</Text>}
         </View>
-        <Text style={styles.message} numberOfLines={1}>
-          {conversation.lastMessage}
-        </Text>
-        <Text style={styles.product} numberOfLines={1}>
-          <Icon name="bicycle-outline" size={12} color={colors.textSecondary} />{' '}
-          {conversation.productName}
+        <Text style={[styles.message, conversation.unreadCount > 0 && styles.messageUnread]} numberOfLines={1}>
+          {lastMsg?.content ?? 'Bắt đầu cuộc trò chuyện'}
         </Text>
       </View>
 
@@ -69,6 +80,10 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 28,
     backgroundColor: colors.gray[200],
+  },
+  avatarFallback: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   onlineIndicator: {
     position: 'absolute',
@@ -107,9 +122,9 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginBottom: 4,
   },
-  product: {
-    fontSize: 12,
-    color: colors.textSecondary,
+  messageUnread: {
+    fontWeight: '600',
+    color: colors.textPrimary,
   },
   unreadBadge: {
     width: 20,
