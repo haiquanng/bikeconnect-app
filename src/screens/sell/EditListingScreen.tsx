@@ -82,7 +82,10 @@ const mapListingToFormData = (item: BicycleListing): CreateListingFormData => ({
 });
 
 const EditListingScreen = ({ navigation, route }: any) => {
-  const { id } = route.params as { id: string };
+  const { id, fromRejected = false } = route.params as {
+    id: string;
+    fromRejected?: boolean;
+  };
 
   const [loadingData, setLoadingData] = useState(true);
   const [currentStep, setCurrentStep] = useState(1);
@@ -171,10 +174,17 @@ const EditListingScreen = ({ navigation, route }: any) => {
       };
 
       await bicycleService.updateBicycle(id, payload);
-      Toast.show({ type: 'success', text1: 'Cập nhật tin đăng thành công!' });
-      navigation.goBack();
+
+      if (fromRejected) {
+        await bicycleService.resubmitBicycle(id);
+        Toast.show({ type: 'success', text1: 'Đã gửi lại tin đăng!', text2: 'Tin đăng đang chờ kiểm định lại' });
+        navigation.navigate('Listings');
+      } else {
+        Toast.show({ type: 'success', text1: 'Cập nhật tin đăng thành công!' });
+        navigation.goBack();
+      }
     } catch {
-      Toast.show({ type: 'error', text1: 'Cập nhật thất bại, vui lòng thử lại' });
+      Toast.show({ type: 'error', text1: fromRejected ? 'Gửi lại thất bại, vui lòng thử lại' : 'Cập nhật thất bại, vui lòng thử lại' });
     } finally {
       setIsSubmitting(false);
     }
@@ -289,7 +299,7 @@ const EditListingScreen = ({ navigation, route }: any) => {
             ) : (
               <>
                 <Text style={styles.nextBtnText}>
-                  {isLastStep ? 'Lưu thay đổi' : 'Tiếp tục'}
+                  {isLastStep ? (fromRejected ? 'Lưu & Gửi lại' : 'Lưu thay đổi') : 'Tiếp tục'}
                 </Text>
                 {!isLastStep && (
                   <Icon name="arrow-forward" size={18} color={colors.white} />

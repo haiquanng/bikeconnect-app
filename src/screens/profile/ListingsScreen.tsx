@@ -232,7 +232,12 @@ const ListingsScreen = ({ navigation }: any) => {
               {isRejected && (
                 <TouchableOpacity
                   style={styles.reportBtn}
-                  onPress={() => navigation.navigate('InspectionReport', { bicycleId: item._id, bicycleTitle: item.title })}
+                  onPress={() => navigation.navigate('InspectionReport', {
+                    bicycleId: item._id,
+                    bicycleTitle: item.title,
+                    rejectionReason: item.rejectionReason,
+                    hasChangedSinceRejection: item.hasChangedSinceRejection,
+                  })}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
                   <Icon name="document-text-outline" size={14} color="#991B1B" />

@@ -105,6 +105,11 @@ export const bicycleService = {
     );
     return response.data;
   },
+
+  async resubmitBicycle(id: string): Promise<BicycleListing> {
+    const response = await apiClient.post<BicycleDetailResponse>(`/bicycles/${id}/resubmit`);
+    return response.data;
+  },
 };
 
 export interface InspectionReport {

@@ -34,6 +34,8 @@ export interface BicycleListing {
     provinceId?: number;
   };
   images: MediaItem[];
+  rejectionReason?: string;
+  hasChangedSinceRejection?: boolean;
   createdAt: string;
   updatedAt: string;
 }
