@@ -99,6 +99,17 @@ export const conversationService = {
     return res.data ?? res.message;
   },
 
+  startSupportChat: async (): Promise<{
+    conversationId: string;
+    partner: { _id: string; fullName: string; avatarUrl?: string };
+  }> => {
+    const res: any = await apiClient.post('/conversations/support/start');
+    return {
+      conversationId: res.conversationId,
+      partner: res.partner,
+    };
+  },
+
   markAsRead: (conversationId: string): Promise<any> =>
     apiClient.put(`/conversations/${conversationId}/read`),
 
