@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,8 +8,12 @@ import {
   FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { colors } from '../../theme';
+
+const STORAGE_KEY = '@recent_searches';
+const MAX_RECENT = 10;
 
 interface SearchScreenProps {
   navigation: any;
@@ -17,16 +21,29 @@ interface SearchScreenProps {
 
 const SearchScreen: React.FC<SearchScreenProps> = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [recentSearches] = useState([
-    'Specialized',
-    'Trek',
-    'Giant',
-    'Cannondale',
-  ]);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
 
-  const handleSearch = () => {
+  useEffect(() => {
+    AsyncStorage.getItem(STORAGE_KEY).then(raw => {
+      if (raw) {
+        setRecentSearches(JSON.parse(raw));
+      }
+    });
+  }, []);
+
+  const saveSearch = async (query: string) => {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      return;
+    }
+    const updated = [trimmed, ...recentSearches.filter(s => s !== trimmed)].slice(0, MAX_RECENT);
+    setRecentSearches(updated);
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  };
+
+  const handleSearch = async () => {
     if (searchQuery.trim()) {
-      // Navigate back to Main and then to Shop tab with params
+      await saveSearch(searchQuery);
       navigation.navigate('Main', {
         screen: 'Shop',
         params: { searchQuery: searchQuery.trim() },
@@ -34,23 +51,31 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ navigation }) => {
     }
   };
 
-  const handleRecentSearch = (query: string) => {
+  const handleRecentSearch = async (query: string) => {
     setSearchQuery(query);
+    await saveSearch(query);
     navigation.navigate('Main', {
       screen: 'Shop',
       params: { searchQuery: query },
     });
   };
 
-  const handleClose = () => {
-    navigation.goBack();
+  const removeRecent = async (query: string) => {
+    const updated = recentSearches.filter(s => s !== query);
+    setRecentSearches(updated);
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  };
+
+  const clearAllRecent = async () => {
+    setRecentSearches([]);
+    await AsyncStorage.removeItem(STORAGE_KEY);
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleClose} style={styles.backButton}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Icon name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <View style={styles.searchBar}>
@@ -74,28 +99,37 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ navigation }) => {
       </View>
 
       {/* Recent Searches */}
-      <View style={styles.content}>
-        <Text style={styles.sectionTitle}>Tìm kiếm gần đây</Text>
-        <FlatList
-          data={recentSearches}
-          keyExtractor={(item, index) => index.toString()}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.recentItem}
-              onPress={() => handleRecentSearch(item)}
-            >
-              <Icon name="time-outline" size={20} color={colors.gray[400]} />
-              <Text style={styles.recentText}>{item}</Text>
-              <Icon
-                name="arrow-forward"
-                size={20}
-                color={colors.gray[300]}
-                style={styles.recentArrow}
-              />
+      {recentSearches.length > 0 && (
+        <View style={styles.content}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Tìm kiếm gần đây</Text>
+            <TouchableOpacity onPress={clearAllRecent}>
+              <Text style={styles.clearAllText}>Xóa tất cả</Text>
             </TouchableOpacity>
-          )}
-        />
-      </View>
+          </View>
+          <FlatList
+            data={recentSearches}
+            keyExtractor={(item, index) => index.toString()}
+            renderItem={({ item }) => (
+              <View style={styles.recentItem}>
+                <TouchableOpacity
+                  style={styles.recentMain}
+                  onPress={() => handleRecentSearch(item)}
+                >
+                  <Icon name="time-outline" size={20} color={colors.gray[400]} />
+                  <Text style={styles.recentText}>{item}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => removeRecent(item)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Icon name="close" size={18} color={colors.gray[400]} />
+                </TouchableOpacity>
+              </View>
+            )}
+          />
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -138,27 +172,39 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 24,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: colors.textPrimary,
-    marginBottom: 16,
+  },
+  clearAllText: {
+    fontSize: 14,
+    color: colors.primaryGreen,
+    fontWeight: '500',
   },
   recentItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: colors.gray[100],
+  },
+  recentMain: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
   },
   recentText: {
     flex: 1,
     fontSize: 16,
     color: colors.textPrimary,
-  },
-  recentArrow: {
-    marginLeft: 'auto',
   },
 });
 

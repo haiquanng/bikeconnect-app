@@ -42,6 +42,9 @@ const ShopScreen = ({ navigation, route }: any) => {
 
   // Filter state
   const [sort, setSort] = useState('-createdAt');
+  const [searchQuery, setSearchQuery] = useState<string>(
+    route.params?.searchQuery ?? '',
+  );
   const [condition, setCondition] = useState<BicycleCondition | null>(null);
   const [brand, setBrand] = useState<Brand | null>(null);
   const [category, setCategory] = useState<{
@@ -86,7 +89,7 @@ const ShopScreen = ({ navigation, route }: any) => {
     return () => sub.remove();
   }, []);
 
-  // Watch route params for category updates from Home navigation
+  // Watch route params for category/search updates
   useEffect(() => {
     if (route.params?.categoryId) {
       setCategory({
@@ -98,13 +101,20 @@ const ShopScreen = ({ navigation, route }: any) => {
   }, [route.params?.categoryId]);
 
   useEffect(() => {
+    if (route.params?.searchQuery !== undefined) {
+      setSearchQuery(route.params.searchQuery);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route.params?.searchQuery]);
+
+  useEffect(() => {
     if (!filterMounted.current) {
       filterMounted.current = true;
       return;
     }
     loadListings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sort, condition, brand, category, minPrice, maxPrice]);
+  }, [sort, condition, brand, category, minPrice, maxPrice, searchQuery]);
 
   const loadListings = async (isRefresh = false) => {
     try {
@@ -114,6 +124,9 @@ const ShopScreen = ({ navigation, route }: any) => {
         setLoading(true);
       }
       const params: Record<string, any> = { sort, limit: 50 };
+      if (searchQuery.trim()) {
+        params.search = searchQuery.trim();
+      }
       if (condition) {
         params.condition = condition;
       }
@@ -182,6 +195,7 @@ const ShopScreen = ({ navigation, route }: any) => {
 
   const clearAllFilters = () => {
     setSort('-createdAt');
+    setSearchQuery('');
     setCondition(null);
     setBrand(null);
     setCategory(null);
@@ -190,6 +204,7 @@ const ShopScreen = ({ navigation, route }: any) => {
   };
 
   const hasActiveFilters =
+    searchQuery !== '' ||
     condition !== null ||
     brand !== null ||
     category !== null ||
@@ -205,8 +220,24 @@ const ShopScreen = ({ navigation, route }: any) => {
         onPress={() => navigation.navigate('Search')}
         activeOpacity={0.8}
       >
-        <Icon name="search-outline" size={20} color={colors.gray[400]} />
-        <Text style={styles.searchPlaceholder}>Tìm kiếm xe đạp...</Text>
+        <Icon name="search-outline" size={20} color={searchQuery ? colors.primaryGreen : colors.gray[400]} />
+        <Text
+          style={[
+            styles.searchPlaceholder,
+            searchQuery ? styles.searchActive : null,
+          ]}
+          numberOfLines={1}
+        >
+          {searchQuery || 'Tìm kiếm xe đạp...'}
+        </Text>
+        {searchQuery ? (
+          <TouchableOpacity
+            onPress={() => setSearchQuery('')}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Icon name="close-circle" size={18} color={colors.gray[400]} />
+          </TouchableOpacity>
+        ) : null}
       </TouchableOpacity>
 
       <ShopFilterBar
@@ -625,6 +656,10 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 15,
     color: colors.gray[400],
+  },
+  searchActive: {
+    color: colors.textPrimary,
+    fontWeight: '500',
   },
 
   resultsRow: {

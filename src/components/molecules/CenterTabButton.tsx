@@ -1,16 +1,14 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { colors } from '../../theme';
 
 export interface CenterTabButtonProps {
-  label: string;
   onPress: () => void;
   onLayout: (event: any) => void;
   icon?: React.ReactNode;
 }
 
 const CenterTabButton: React.FC<CenterTabButtonProps> = ({
-  label,
   onPress,
   onLayout,
   icon,
@@ -22,8 +20,10 @@ const CenterTabButton: React.FC<CenterTabButtonProps> = ({
         style={styles.centerButtonWrapper}
         activeOpacity={0.8}
       >
-        <View style={styles.customButton}>{icon}</View>
-        <Text style={styles.customButtonLabel}>{label}</Text>
+        {/* White halo ring — tạo hiệu ứng nổi như mẫu Flutter */}
+        <View style={styles.halo}>
+          <View style={styles.customButton}>{icon}</View>
+        </View>
       </TouchableOpacity>
     </View>
   );
@@ -38,28 +38,35 @@ const styles = StyleSheet.create({
   centerButtonWrapper: {
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: -24,
+    marginTop: -44,
+  },
+  halo: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: colors.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 4,
+    borderColor: colors.primaryGreen,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 14,
+    elevation: 14,
   },
   customButton: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: colors.primary,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.primaryGreen,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: colors.primary,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
     shadowRadius: 8,
-    elevation: 8,
-  },
-  customButtonLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: colors.gray[400],
+    elevation: 6,
   },
 });
 
