@@ -4,6 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { colors } from '../theme';
 import CustomTabBar from '../components/organisms/CustomTabBar';
 import TabIcon from '../components/atoms/TabIcon';
+import MCIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 // Screens
 import HomeScreen from '../screens/main/HomeScreen';
@@ -24,7 +25,7 @@ const ShopTabBarIcon = ({ color, size }: any) => (
 );
 
 const SellTabBarIcon = () => (
-  <TabIcon name="add" size={32} color={colors.white} />
+  <MCIcon name="bike-fast" size={28} color={colors.white} />
 );
 
 const InboxTabBarIcon = ({ color, size }: any) => (
