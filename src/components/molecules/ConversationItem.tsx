@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import ReanimatedSwipeable, { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { colors } from '../../theme';
 import { ApiConversation } from '../../api/conversationService';
@@ -16,17 +17,74 @@ const formatTime = (iso: string) => {
 interface ConversationItemProps {
   conversation: ApiConversation;
   onPress: () => void;
+  onHide?: (id: string) => void;
+  onDelete?: (id: string) => void;
+  selectable?: boolean;
+  selected?: boolean;
+  onSelect?: (id: string) => void;
 }
+
+const ACTION_WIDTH = 75;
 
 const ConversationItem: React.FC<ConversationItemProps> = ({
   conversation,
   onPress,
+  onHide,
+  onDelete,
+  selectable,
+  selected,
+  onSelect,
 }) => {
   const partner = conversation.chatPartner;
   const lastMsg = conversation.lastMessage;
+  const swipeRef = useRef<SwipeableMethods>(null);
 
-  return (
-    <TouchableOpacity style={styles.container} onPress={onPress}>
+  const renderRightActions = () => (
+    <View style={styles.actionsContainer}>
+      <TouchableOpacity
+        style={[styles.actionButton, styles.actionHide]}
+        onPress={() => {
+          swipeRef.current?.close();
+          onHide?.(conversation._id);
+        }}
+      >
+        <Icon name="eye-off-outline" size={22} color={colors.white} />
+        <Text style={styles.actionText}>Ẩn</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.actionButton, styles.actionDelete]}
+        onPress={() => {
+          swipeRef.current?.close();
+          onDelete?.(conversation._id);
+        }}
+      >
+        <Icon name="trash-outline" size={22} color={colors.white} />
+        <Text style={styles.actionText}>Xoá</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const rowContent = (
+    <TouchableOpacity
+      style={[styles.container, selected && styles.containerSelected]}
+      onPress={() => {
+        if (selectable) {
+          onSelect?.(conversation._id);
+        } else {
+          onPress();
+        }
+      }}
+      onLongPress={() => onSelect?.(conversation._id)}
+      activeOpacity={0.7}
+    >
+      {/* Checkbox in select mode */}
+      {selectable && (
+        <View style={[styles.checkbox, selected && styles.checkboxSelected]}>
+          {selected && <Icon name="checkmark" size={14} color={colors.white} />}
+        </View>
+      )}
+
       {/* Avatar */}
       <View style={styles.avatarContainer}>
         {partner.avatarUrl ? (
@@ -47,18 +105,37 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
           </Text>
           {lastMsg && <Text style={styles.time}>{formatTime(lastMsg.createdAt)}</Text>}
         </View>
-        <Text style={[styles.message, conversation.unreadCount > 0 && styles.messageUnread]} numberOfLines={1}>
+        <Text
+          style={[styles.message, conversation.unreadCount > 0 && styles.messageUnread]}
+          numberOfLines={1}
+        >
           {lastMsg?.content ?? 'Bắt đầu cuộc trò chuyện'}
         </Text>
       </View>
 
       {/* Unread badge */}
-      {conversation.unreadCount > 0 && (
+      {conversation.unreadCount > 0 && !selectable && (
         <View style={styles.unreadBadge}>
           <Text style={styles.unreadText}>{conversation.unreadCount}</Text>
         </View>
       )}
     </TouchableOpacity>
+  );
+
+  if (selectable) {
+    return rowContent;
+  }
+
+  return (
+    <ReanimatedSwipeable
+      ref={swipeRef}
+      friction={2}
+      rightThreshold={ACTION_WIDTH}
+      renderRightActions={renderRightActions}
+      overshootRight={false}
+    >
+      {rowContent}
+    </ReanimatedSwipeable>
   );
 };
 
@@ -70,6 +147,24 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderBottomWidth: 1,
     borderBottomColor: colors.gray[100],
+    alignItems: 'center',
+  },
+  containerSelected: {
+    backgroundColor: colors.gray[50],
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: colors.gray[300],
+    marginRight: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxSelected: {
+    backgroundColor: colors.primaryBlue,
+    borderColor: colors.primaryBlue,
   },
   avatarContainer: {
     position: 'relative',
@@ -140,6 +235,27 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: colors.white,
+  },
+  actionsContainer: {
+    width: ACTION_WIDTH * 2,
+    flexDirection: 'row',
+  },
+  actionButton: {
+    width: ACTION_WIDTH,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 4,
+  },
+  actionHide: {
+    backgroundColor: colors.gray[500],
+  },
+  actionDelete: {
+    backgroundColor: '#E53935',
+  },
+  actionText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: '600',
   },
 });
 

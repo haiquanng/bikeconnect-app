@@ -110,6 +110,20 @@ export const conversationService = {
     };
   },
 
+  hideConversation: (conversationId: string): Promise<any> =>
+    apiClient.patch(`/conversations/${conversationId}/hide`),
+
+  deleteConversation: (conversationId: string): Promise<any> =>
+    apiClient.delete(`/conversations/${conversationId}`),
+
+  deleteAllConversations: (): Promise<any> =>
+    apiClient.delete('/conversations'),
+
+  getHiddenConversations: async (): Promise<ApiConversation[]> => {
+    const res: any = await apiClient.get('/conversations/hidden');
+    return res.data ?? [];
+  },
+
   markAsRead: (conversationId: string): Promise<any> =>
     apiClient.put(`/conversations/${conversationId}/read`),
 
