@@ -110,6 +110,13 @@ const ProfileScreen = ({ navigation }: any) => {
       showChevron: true,
     },
     {
+      id: 'wishlist',
+      title: 'Xe yêu thích',
+      icon: 'heart-outline',
+      onPress: () => navigation.navigate('Wishlist'),
+      showChevron: true,
+    },
+    {
       id: 'orders',
       title: 'Đơn mua của tôi',
       icon: 'receipt-outline',

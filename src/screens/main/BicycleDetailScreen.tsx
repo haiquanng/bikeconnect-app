@@ -12,6 +12,7 @@ import { useFocusEffect } from '@react-navigation/native';
 // import Icon from 'react-native-vector-icons/Ionicons';
 import { colors } from '../../theme';
 import { bicycleService } from '../../api/bicycleService';
+import { wishlistService } from '../../api/wishlistService';
 import type { BicycleListing } from '../../types/bicycle';
 import { showToast } from '../../utils/toast';
 import { useAppSelector } from '../../redux/hooks';
@@ -41,6 +42,8 @@ const BicycleDetailScreen = ({ navigation, route }: any) => {
   const [imageIndex, setImageIndex] = useState(0);
   const [showSpecs, setShowSpecs] = useState(false);
   const [stickyVisible, setStickyVisible] = useState(false);
+  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
 
   const stickyRef = useRef(false);
   const THRESHOLD = GALLERY_H * 0.5;
@@ -51,6 +54,38 @@ const BicycleDetailScreen = ({ navigation, route }: any) => {
     if (next !== stickyRef.current) {
       stickyRef.current = next;
       setStickyVisible(next);
+    }
+  };
+
+  const handleToggleWishlist = async () => {
+    if (!currentUser) {
+      showToast('Vui lòng đăng nhập để lưu yêu thích');
+      return;
+    }
+    if (wishlistLoading || !item) return;
+    setWishlistLoading(true);
+    try {
+      if (isWishlisted) {
+        await wishlistService.remove(item._id);
+        setIsWishlisted(false);
+        showToast('Đã xoá khỏi yêu thích');
+      } else {
+        try {
+          await wishlistService.add(item._id);
+          showToast('Đã lưu vào yêu thích');
+        } catch (addErr: any) {
+          if (addErr?.response?.status === 409) {
+            // Đã có trong wishlist (state chưa kịp sync), chỉ cập nhật state
+          } else {
+            throw addErr;
+          }
+        }
+        setIsWishlisted(true);
+      }
+    } catch {
+      showToast('Có lỗi xảy ra, vui lòng thử lại');
+    } finally {
+      setWishlistLoading(false);
     }
   };
 
@@ -77,9 +112,13 @@ const BicycleDetailScreen = ({ navigation, route }: any) => {
       (async () => {
         try {
           setLoading(true);
-          const data = await bicycleService.getBicycleById(id);
+          const [data, wishlisted] = await Promise.all([
+            bicycleService.getBicycleById(id),
+            currentUser ? wishlistService.check(id).catch(() => false) : Promise.resolve(false),
+          ]);
           if (!cancelled) {
             setItem(data);
+            setIsWishlisted(wishlisted as boolean);
             loadRelatedItems(data.category?._id ?? '', id);
           }
         } catch (error: any) {
@@ -92,7 +131,7 @@ const BicycleDetailScreen = ({ navigation, route }: any) => {
         }
       })();
       return () => { cancelled = true; };
-    }, [id, navigation]),
+    }, [id, navigation, currentUser]),
   );
 
   if (loading || !item) {
@@ -133,6 +172,9 @@ const BicycleDetailScreen = ({ navigation, route }: any) => {
           imageIndex={imageIndex}
           onIndexChange={setImageIndex}
           onBack={() => navigation.goBack()}
+          showWishlist={!isSeller}
+          isWishlisted={isWishlisted}
+          onToggleWishlist={handleToggleWishlist}
         />
 
         <SellerRow
