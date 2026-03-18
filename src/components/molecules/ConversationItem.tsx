@@ -18,6 +18,7 @@ interface ConversationItemProps {
   conversation: ApiConversation;
   onPress: () => void;
   onHide?: (id: string) => void;
+  onUnhide?: (id: string) => void;
   onDelete?: (id: string) => void;
   selectable?: boolean;
   selected?: boolean;
@@ -30,6 +31,7 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
   conversation,
   onPress,
   onHide,
+  onUnhide,
   onDelete,
   selectable,
   selected,
@@ -41,16 +43,29 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
 
   const renderRightActions = () => (
     <View style={styles.actionsContainer}>
-      <TouchableOpacity
-        style={[styles.actionButton, styles.actionHide]}
-        onPress={() => {
-          swipeRef.current?.close();
-          onHide?.(conversation._id);
-        }}
-      >
-        <Icon name="eye-off-outline" size={22} color={colors.white} />
-        <Text style={styles.actionText}>Ẩn</Text>
-      </TouchableOpacity>
+      {onUnhide ? (
+        <TouchableOpacity
+          style={[styles.actionButton, styles.actionHide]}
+          onPress={() => {
+            swipeRef.current?.close();
+            onUnhide(conversation._id);
+          }}
+        >
+          <Icon name="eye-outline" size={22} color={colors.white} />
+          <Text style={styles.actionText}>Bỏ Ẩn</Text>
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity
+          style={[styles.actionButton, styles.actionHide]}
+          onPress={() => {
+            swipeRef.current?.close();
+            onHide?.(conversation._id);
+          }}
+        >
+          <Icon name="eye-off-outline" size={22} color={colors.white} />
+          <Text style={styles.actionText}>Ẩn</Text>
+        </TouchableOpacity>
+      )}
 
       <TouchableOpacity
         style={[styles.actionButton, styles.actionDelete]}

@@ -19,8 +19,7 @@ export interface WishlistItem {
 export const wishlistService = {
   getWishlist: async (page = 1, limit = 20): Promise<{ items: WishlistItem[]; totalPages: number }> => {
     const res: any = await apiClient.get('/wishlist', { params: { page, limit } });
-    const d = res.data;
-    return { items: d.data, totalPages: d.pagination.totalPages };
+    return { items: res.data, totalPages: res.pagination.totalPages };
   },
 
   add: async (bicycleId: string): Promise<void> => {
@@ -33,6 +32,6 @@ export const wishlistService = {
 
   check: async (bicycleId: string): Promise<boolean> => {
     const res: any = await apiClient.get(`/wishlist/${bicycleId}`);
-    return res.data.data.isWishlisted;
+    return res.data.isWishlisted;
   },
 };

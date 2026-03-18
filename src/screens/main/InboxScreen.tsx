@@ -92,6 +92,15 @@ const InboxScreen = ({ navigation }: any) => {
     }
   }, []);
 
+  const handleUnhide = useCallback(async (id: string) => {
+    try {
+      await conversationService.unhideConversation(id);
+      setHiddenConversations(prev => prev.filter(c => c._id !== id));
+    } catch {
+      Alert.alert('Lỗi', 'Không thể bỏ ẩn hội thoại');
+    }
+  }, []);
+
   const handleDelete = useCallback(async (id: string) => {
     Alert.alert('Xoá hội thoại', 'Bạn có chắc muốn xoá hội thoại này?', [
       { text: 'Huỷ', style: 'cancel' },
@@ -312,7 +321,8 @@ const InboxScreen = ({ navigation }: any) => {
               selectable={viewMode === 'select'}
               selected={selectedIds.has(item._id)}
               onSelect={toggleSelect}
-              onHide={handleHide}
+              onHide={viewMode === 'hidden' ? undefined : handleHide}
+              onUnhide={viewMode === 'hidden' ? handleUnhide : undefined}
               onDelete={handleDelete}
               onPress={() => {
                 navigation.navigate('ChatDetail', {
