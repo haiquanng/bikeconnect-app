@@ -1,5 +1,7 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import { navigationRef } from './navigationRef';
+import { usePushNotifications } from '../services/pushNotificationService';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Provider } from 'react-redux';
 import { store } from '../redux/store';
@@ -77,11 +79,16 @@ const toastConfig = {
 
 const Stack = createNativeStackNavigator();
 
+const AppNavigatorInner = () => {
+  usePushNotifications();
+  return null;
+};
+
 const AppNavigator = () => {
   return (
     <Provider store={store}>
       <>
-        <NavigationContainer>
+        <NavigationContainer ref={navigationRef}>
           <Stack.Navigator
             screenOptions={{
               headerShown: false,
@@ -139,6 +146,7 @@ const AppNavigator = () => {
             <Stack.Screen name="VnpayWebView" component={VnpayWebViewScreen} />
           </Stack.Navigator>
         </NavigationContainer>
+        <AppNavigatorInner />
         <Toast config={toastConfig} />
       </>
     </Provider>
