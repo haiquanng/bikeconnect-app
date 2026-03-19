@@ -113,6 +113,9 @@ export const conversationService = {
   hideConversation: (conversationId: string): Promise<any> =>
     apiClient.patch(`/conversations/${conversationId}/hide`),
 
+  unhideConversation: (conversationId: string): Promise<any> =>
+    apiClient.patch(`/conversations/${conversationId}/unhide`),
+
   deleteConversation: (conversationId: string): Promise<any> =>
     apiClient.delete(`/conversations/${conversationId}`),
 

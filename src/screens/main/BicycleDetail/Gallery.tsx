@@ -6,10 +6,10 @@ import {
   TouchableOpacity,
   Text,
   StyleSheet,
+  Share,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { colors } from '../../../theme';
-import { showToast } from '../../../utils/toast';
 import type { MediaItem } from '../../../types/bicycle';
 
 interface Props {
@@ -20,9 +20,19 @@ interface Props {
   imageIndex: number;
   onIndexChange: (i: number) => void;
   onBack: () => void;
+  isWishlisted?: boolean;
+  onToggleWishlist?: () => void;
+  showWishlist?: boolean;
+  bicycleId?: string;
 }
 
-const Gallery = ({ images, W, GALLERY_H, topInset, imageIndex, onIndexChange, onBack }: Props) => (
+const Gallery = ({ images, W, GALLERY_H, topInset, imageIndex, onIndexChange, onBack, isWishlisted, onToggleWishlist, showWishlist, bicycleId }: Props) => {
+  const handleShare = () => {
+    const url = `https://www.xedap.store/listings/${bicycleId}`;
+    Share.share({ message: url, url });
+  };
+
+  return (
   <View style={{ width: W, height: GALLERY_H }}>
     {images ? (
       <FlatList
@@ -64,14 +74,28 @@ const Gallery = ({ images, W, GALLERY_H, topInset, imageIndex, onIndexChange, on
       </View>
     )}
 
+    {showWishlist && onToggleWishlist && (
+      <TouchableOpacity
+        style={[styles.topRightBtn, { top: topInset + 10 }]}
+        onPress={onToggleWishlist}
+      >
+        <Icon
+          name={isWishlisted ? 'heart' : 'heart-outline'}
+          size={20}
+          color={isWishlisted ? '#EF4444' : colors.white}
+        />
+      </TouchableOpacity>
+    )}
+
     <TouchableOpacity
       style={styles.shareBtn}
-      onPress={() => showToast('Đang phát triển')}
+      onPress={handleShare}
     >
       <Icon name="share-social-outline" size={20} color={colors.white} />
     </TouchableOpacity>
   </View>
-);
+  );
+};
 
 const styles = StyleSheet.create({
   fallback: {
@@ -100,6 +124,16 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   counterText: { color: colors.white, fontSize: 13, fontWeight: '600' },
+  topRightBtn: {
+    position: 'absolute',
+    right: 14,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   shareBtn: {
     position: 'absolute',
     bottom: 12,

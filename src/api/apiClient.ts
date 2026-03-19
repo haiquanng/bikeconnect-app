@@ -36,13 +36,16 @@ class ApiClient {
         return response;
       },
       async error => {
-        // Log error details
-        console.error('API Error:', {
-          url: error.config?.url,
-          method: error.config?.method,
-          status: error.response?.status,
-          message: error.message,
-        });
+        // Log error details (skip expected status codes)
+        const status = error.response?.status;
+        if (status !== 409) {
+          console.error('API Error:', {
+            url: error.config?.url,
+            method: error.config?.method,
+            status,
+            message: error.message,
+          });
+        }
 
         // Handle 401 - try to refresh token
         if (error.response?.status === 401 && !error.config._retry) {

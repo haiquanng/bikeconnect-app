@@ -1,5 +1,7 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import { navigationRef } from './navigationRef';
+import { usePushNotifications } from '../services/pushNotificationService';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Provider } from 'react-redux';
 import { store } from '../redux/store';
@@ -34,6 +36,7 @@ import WithdrawScreen from '../screens/profile/WithdrawScreen';
 import TransactionDetailScreen from '../screens/profile/TransactionDetailScreen';
 import InspectionReportScreen from '../screens/profile/InspectionReportScreen';
 import PackageScreen from '../screens/profile/PackageScreen';
+import WishlistScreen from '../screens/profile/WishlistScreen';
 import VnpayWebViewScreen from '../screens/checkout/VnpayWebViewScreen';
 import CreateListingScreen from '../screens/sell/CreateListingScreen';
 import EditListingScreen from '../screens/sell/EditListingScreen';
@@ -76,11 +79,16 @@ const toastConfig = {
 
 const Stack = createNativeStackNavigator();
 
+const AppNavigatorInner = () => {
+  usePushNotifications();
+  return null;
+};
+
 const AppNavigator = () => {
   return (
     <Provider store={store}>
       <>
-        <NavigationContainer>
+        <NavigationContainer ref={navigationRef}>
           <Stack.Navigator
             screenOptions={{
               headerShown: false,
@@ -134,9 +142,11 @@ const AppNavigator = () => {
             <Stack.Screen name="InspectionReport" component={InspectionReportScreen} />
             <Stack.Screen name="EditListing" component={EditListingScreen} />
             <Stack.Screen name="Package" component={PackageScreen} />
+            <Stack.Screen name="Wishlist" component={WishlistScreen} />
             <Stack.Screen name="VnpayWebView" component={VnpayWebViewScreen} />
           </Stack.Navigator>
         </NavigationContainer>
+        <AppNavigatorInner />
         <Toast config={toastConfig} />
       </>
     </Provider>
