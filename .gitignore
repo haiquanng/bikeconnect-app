@@ -83,3 +83,5 @@ cloudinary.config.js
 .agent/*
 .shared/*
 
+# agent
+CLAUDE.md

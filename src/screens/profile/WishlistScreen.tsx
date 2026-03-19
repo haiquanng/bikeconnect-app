@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,8 +8,8 @@ import {
   Image,
   ActivityIndicator,
   RefreshControl,
-  Alert,
 } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -31,44 +31,52 @@ const WishlistCard = ({
   onPress: () => void;
   onRemove: () => void;
 }) => {
+  const swipeRef = useRef<Swipeable>(null);
   const bike = item.bicycle;
   const isSold = bike.status !== 'APPROVED';
 
-  return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
-      <View style={styles.imageWrap}>
-        {bike.primaryImage ? (
-          <Image source={{ uri: bike.primaryImage }} style={styles.image} resizeMode="cover" />
-        ) : (
-          <View style={[styles.image, styles.imageFallback]}>
-            <Icon name="bicycle-outline" size={36} color={colors.gray[300]} />
-          </View>
-        )}
-        {isSold && (
-          <View style={styles.soldBadge}>
-            <Text style={styles.soldText}>Đã bán</Text>
-          </View>
-        )}
-      </View>
-
-      <View style={styles.info}>
-        <Text style={styles.title} numberOfLines={2}>{bike.title}</Text>
-        {bike.condition && (
-          <Text style={styles.condition}>
-            {CONDITION_LABELS[bike.condition] ?? bike.condition}
-          </Text>
-        )}
-        <Text style={styles.price}>{formatPrice(bike.price)}</Text>
-      </View>
-
-      <TouchableOpacity
-        style={styles.heartBtn}
-        onPress={onRemove}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-      >
-        <Icon name="heart" size={22} color={colors.error} />
-      </TouchableOpacity>
+  const renderRightActions = () => (
+    <TouchableOpacity
+      style={styles.swipeAction}
+      onPress={() => {
+        swipeRef.current?.close();
+        onRemove();
+      }}
+    >
+      <Icon name="heart-dislike-outline" size={22} color={colors.white} />
+      <Text style={styles.swipeActionText}>Gỡ</Text>
     </TouchableOpacity>
+  );
+
+  return (
+    <Swipeable ref={swipeRef} renderRightActions={renderRightActions} friction={2} overshootRight={false}>
+      <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
+        <View style={styles.imageWrap}>
+          {bike.primaryImage ? (
+            <Image source={{ uri: bike.primaryImage }} style={styles.image} resizeMode="cover" />
+          ) : (
+            <View style={[styles.image, styles.imageFallback]}>
+              <Icon name="bicycle-outline" size={36} color={colors.gray[300]} />
+            </View>
+          )}
+          {isSold && (
+            <View style={styles.soldBadge}>
+              <Text style={styles.soldText}>Đã bán</Text>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.info}>
+          <Text style={styles.title} numberOfLines={2}>{bike.title}</Text>
+          {bike.condition && (
+            <Text style={styles.condition}>
+              {CONDITION_LABELS[bike.condition] ?? bike.condition}
+            </Text>
+          )}
+          <Text style={styles.price}>{formatPrice(bike.price)}</Text>
+        </View>
+      </TouchableOpacity>
+    </Swipeable>
   );
 };
 
@@ -100,26 +108,13 @@ const WishlistScreen = ({ navigation }: any) => {
 
   useFocusEffect(useCallback(() => { load(1); }, [load]));
 
-  const handleRemove = (item: WishlistItem) => {
-    Alert.alert(
-      'Xoá khỏi yêu thích',
-      `Bỏ lưu "${item.bicycle.title}"?`,
-      [
-        { text: 'Huỷ', style: 'cancel' },
-        {
-          text: 'Xoá',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await wishlistService.remove(item.bicycleId);
-              setItems(prev => prev.filter(i => i._id !== item._id));
-            } catch {
-              showToast('Không thể xoá');
-            }
-          },
-        },
-      ],
-    );
+  const handleRemove = async (item: WishlistItem) => {
+    try {
+      await wishlistService.remove(item.bicycleId);
+      setItems(prev => prev.filter(i => i._id !== item._id));
+    } catch {
+      showToast('Không thể xoá');
+    }
   };
 
   const renderFooter = () => {
@@ -219,7 +214,14 @@ const styles = StyleSheet.create({
   title: { fontSize: 14, fontWeight: '600', color: colors.textPrimary, marginBottom: 4 },
   condition: { fontSize: 12, color: colors.textSecondary, marginBottom: 4 },
   price: { fontSize: 15, fontWeight: '700', color: colors.primaryGreen },
-  heartBtn: { paddingLeft: 12 },
+  swipeAction: {
+    backgroundColor: colors.error,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+    gap: 4,
+  },
+  swipeActionText: { color: colors.white, fontSize: 12, fontWeight: '600' },
   separator: { height: 1, backgroundColor: colors.gray[100] },
   loadMore: { alignItems: 'center', paddingVertical: 16 },
   loadMoreText: { fontSize: 14, color: colors.primaryGreen, fontWeight: '500' },
