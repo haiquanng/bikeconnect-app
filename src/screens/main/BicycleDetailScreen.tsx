@@ -175,6 +175,7 @@ const BicycleDetailScreen = ({ navigation, route }: any) => {
           showWishlist={!isSeller}
           isWishlisted={isWishlisted}
           onToggleWishlist={handleToggleWishlist}
+          bicycleId={item._id}
         />
 
         <SellerRow

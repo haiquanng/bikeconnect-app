@@ -6,10 +6,10 @@ import {
   TouchableOpacity,
   Text,
   StyleSheet,
+  Share,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { colors } from '../../../theme';
-import { showToast } from '../../../utils/toast';
 import type { MediaItem } from '../../../types/bicycle';
 
 interface Props {
@@ -23,9 +23,16 @@ interface Props {
   isWishlisted?: boolean;
   onToggleWishlist?: () => void;
   showWishlist?: boolean;
+  bicycleId?: string;
 }
 
-const Gallery = ({ images, W, GALLERY_H, topInset, imageIndex, onIndexChange, onBack, isWishlisted, onToggleWishlist, showWishlist }: Props) => (
+const Gallery = ({ images, W, GALLERY_H, topInset, imageIndex, onIndexChange, onBack, isWishlisted, onToggleWishlist, showWishlist, bicycleId }: Props) => {
+  const handleShare = () => {
+    const url = `https://www.xedap.store/listings/${bicycleId}`;
+    Share.share({ message: url, url });
+  };
+
+  return (
   <View style={{ width: W, height: GALLERY_H }}>
     {images ? (
       <FlatList
@@ -82,12 +89,13 @@ const Gallery = ({ images, W, GALLERY_H, topInset, imageIndex, onIndexChange, on
 
     <TouchableOpacity
       style={styles.shareBtn}
-      onPress={() => showToast('Đang phát triển')}
+      onPress={handleShare}
     >
       <Icon name="share-social-outline" size={20} color={colors.white} />
     </TouchableOpacity>
   </View>
-);
+  );
+};
 
 const styles = StyleSheet.create({
   fallback: {
