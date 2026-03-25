@@ -3,6 +3,8 @@ export type UserRole = 'BUYER' | 'SELLER' | 'ADMIN' | 'INSPECTOR';
 export type AuthProvider = 'google' | 'email';
 export interface Address {
   _id?: string;
+  fullName?: string;
+  phone?: string;
   label: string;
   street?: string;
   wardName?: string;
