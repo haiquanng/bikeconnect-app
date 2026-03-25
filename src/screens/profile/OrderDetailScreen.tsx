@@ -430,6 +430,33 @@ const OrderDetailScreen = ({ navigation, route }: any) => {
         </SectionCard>
 
         {/* Timeline */}
+        {order.deliveryProof && (
+          <SectionCard
+            title={order.deliveryProof.isSuccess ? 'Bằng chứng giao hàng' : 'Giao hàng thất bại'}
+            icon={order.deliveryProof.isSuccess ? 'checkmark-circle-outline' : 'close-circle-outline'}
+          >
+            {!order.deliveryProof.isSuccess && order.deliveryProof.failReason && (
+              <View style={styles.proofFailBanner}>
+                <Icon name="warning-outline" size={14} color="#b45309" />
+                <Text style={styles.proofFailText}>{order.deliveryProof.failReason}</Text>
+              </View>
+            )}
+            {order.deliveryProof.images?.length > 0 && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
+                {order.deliveryProof.images.map((uri, i) => (
+                  <Image key={i} source={{ uri }} style={styles.proofImage} />
+                ))}
+              </ScrollView>
+            )}
+            {order.deliveryProof.deliveredAt && (
+              <InfoRow label="Thời gian giao" value={formatDateTime(order.deliveryProof.deliveredAt)} />
+            )}
+            {order.deliveryProof.failedAt && (
+              <InfoRow label="Thời gian" value={formatDateTime(order.deliveryProof.failedAt)} />
+            )}
+          </SectionCard>
+        )}
+
         <SectionCard title="Lịch sử đơn" icon="time-outline">
           <InfoRow label="Ngày đặt"        value={formatDateTime(order.createdAt)} />
           {order.reservedAt && (
@@ -856,6 +883,27 @@ const styles = StyleSheet.create({
     height: 72,
     borderRadius: 8,
     overflow: 'visible',
+  },
+  proofImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+    marginRight: 8,
+  },
+  proofFailBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#fef3c7',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginBottom: 4,
+  },
+  proofFailText: {
+    fontSize: 13,
+    color: '#92400e',
+    flex: 1,
   },
   evidenceImg: {
     width: 72,

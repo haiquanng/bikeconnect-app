@@ -53,6 +53,19 @@ export interface OrderBicycle {
   condition?: string;
 }
 
+export interface DeliveryProof {
+  images: string[];
+  isSuccess: boolean;
+  deliveredAt?: string;
+  failedAt?: string;
+  failReason?: string;
+}
+
+export interface ReceiveProof {
+  images: string[];
+  receivedAt?: string;
+}
+
 export interface Order {
   _id: string;
   orderCode: string;
@@ -63,6 +76,8 @@ export interface Order {
   bicycle: OrderBicycle;
   amounts: OrderAmounts;
   review?: { rating: number; comment: string; createdAt: string };
+  deliveryProof?: DeliveryProof;
+  receiveProof?: ReceiveProof;
   reservedAt?: string;
   reservationExpiresAt?: string;
   sellerConfirmedAt?: string;

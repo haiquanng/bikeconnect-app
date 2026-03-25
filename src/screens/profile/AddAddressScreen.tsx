@@ -26,6 +26,8 @@ const AddAddressScreen = ({ navigation, route }: any) => {
   const editAddress: Address | undefined = route.params?.address;
   const isEditMode = !!editAddress;
 
+  const [fullName, setFullName] = useState(editAddress?.fullName || '');
+  const [phone, setPhone] = useState(editAddress?.phone || '');
   const [label, setLabel] = useState(editAddress?.label || '');
   const [street, setStreet] = useState(editAddress?.street || '');
   const [isDefault, setIsDefault] = useState(editAddress?.isDefault || false);
@@ -123,6 +125,14 @@ const AddAddressScreen = ({ navigation, route }: any) => {
   };
 
   const handleSubmit = async () => {
+    if (!fullName.trim()) {
+      Alert.alert('Lỗi', 'Vui lòng nhập tên người nhận');
+      return;
+    }
+    if (!phone.trim()) {
+      Alert.alert('Lỗi', 'Vui lòng nhập số điện thoại');
+      return;
+    }
     if (!label.trim()) {
       Alert.alert('Lỗi', 'Vui lòng nhập tên địa chỉ');
       return;
@@ -144,6 +154,8 @@ const AddAddressScreen = ({ navigation, route }: any) => {
     Keyboard.dismiss();
 
     const addressData: Omit<Address, '_id'> = {
+      fullName: fullName.trim(),
+      phone: phone.trim(),
       label: label.trim(),
       street: street.trim(),
       provinceName: selectedProvince.ProvinceName,
@@ -230,6 +242,35 @@ const AddAddressScreen = ({ navigation, route }: any) => {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
+        {/* Full Name */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Tên người nhận <Text style={styles.required}>*</Text></Text>
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.input}
+              placeholder="Nguyễn Văn A"
+              placeholderTextColor={colors.gray[300]}
+              value={fullName}
+              onChangeText={setFullName}
+            />
+          </View>
+        </View>
+
+        {/* Phone */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Số điện thoại <Text style={styles.required}>*</Text></Text>
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.input}
+              placeholder="0912 345 678"
+              placeholderTextColor={colors.gray[300]}
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+            />
+          </View>
+        </View>
+
         {/* Label */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Tên địa chỉ <Text style={styles.required}>*</Text></Text>
