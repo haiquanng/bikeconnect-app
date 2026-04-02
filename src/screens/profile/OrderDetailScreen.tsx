@@ -121,6 +121,11 @@ const OrderDetailScreen = ({ navigation, route }: any) => {
   const [evidenceImages, setEvidenceImages] = useState<string[]>([]);
   const [uploadingImage, setUploadingImage] = useState(false);
 
+  const [reviewVisible, setReviewVisible] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
+
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Show VNPay result toast once on mount
@@ -271,6 +276,26 @@ const OrderDetailScreen = ({ navigation, route }: any) => {
     );
   };
 
+  const handleSubmitReview = async () => {
+    if (!order) { return; }
+    try {
+      setSubmittingReview(true);
+      const updated = await orderService.reviewOrder(order._id, {
+        rating: reviewRating,
+        comment: reviewComment.trim() || undefined,
+      });
+      setOrder(updated);
+      setReviewVisible(false);
+      setReviewComment('');
+      setReviewRating(5);
+      Toast.show({ type: 'success', text1: 'Đánh giá thành công!', text2: 'Cảm ơn bạn đã đánh giá người bán.' });
+    } catch {
+      Alert.alert('Lỗi', 'Không thể gửi đánh giá. Vui lòng thử lại.');
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
   const handlePickImage = async () => {
     if (evidenceImages.length >= 3) {
       Alert.alert('Giới hạn', 'Tối đa 3 ảnh bằng chứng');
@@ -331,6 +356,7 @@ const OrderDetailScreen = ({ navigation, route }: any) => {
   const isDepositPendingFull = order.paymentType === 'DEPOSIT_10' && order.status === 'DEPOSIT_CONFIRMED';
   const canPay = ['RESERVED_FULL', 'RESERVED_DEPOSIT', 'WAITING_REMAINING_PAYMENT', 'DEPOSIT_CONFIRMED'].includes(order.status);
   const canDeliver = order.status === 'DELIVERED';
+  const canReview = ['COMPLETED', 'FUNDS_RELEASED'].includes(order.status) && !order.review;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -475,6 +501,26 @@ const OrderDetailScreen = ({ navigation, route }: any) => {
             <InfoRow label="Lý do huỷ"    value={order.cancelReason} />
           )}
         </SectionCard>
+
+        {/* Review card — if already reviewed */}
+        {order.review && (
+          <SectionCard title="Đánh giá của bạn" icon="star-outline">
+            <View style={styles.reviewStarRow}>
+              {[1,2,3,4,5].map(star => (
+                <Icon
+                  key={star}
+                  name={star <= order.review!.rating ? 'star' : 'star-outline'}
+                  size={20}
+                  color="#f59e0b"
+                />
+              ))}
+              <Text style={styles.reviewRatingText}>{order.review.rating}/5</Text>
+            </View>
+            {order.review.comment ? (
+              <Text style={styles.reviewComment}>{order.review.comment}</Text>
+            ) : null}
+          </SectionCard>
+        )}
       </ScrollView>
 
       {/* 2-day warning — shown for all deposit cases needing payment */}
@@ -544,6 +590,78 @@ const OrderDetailScreen = ({ navigation, route }: any) => {
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Review bottom bar */}
+      {canReview && (
+        <View style={styles.bottomBar}>
+          <TouchableOpacity
+            style={[styles.payBtn, { flex: 1 }]}
+            onPress={() => setReviewVisible(true)}
+          >
+            <Icon name="star-outline" size={18} color={colors.white} style={{ marginRight: 6 }} />
+            <Text style={styles.payBtnText}>Đánh giá người bán</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Review Modal */}
+      <Modal
+        visible={reviewVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setReviewVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Đánh giá người bán</Text>
+              <TouchableOpacity onPress={() => setReviewVisible(false)}>
+                <Icon name="close" size={22} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalLabel}>Số sao</Text>
+            <View style={styles.starRow}>
+              {[1,2,3,4,5].map(star => (
+                <TouchableOpacity key={star} onPress={() => setReviewRating(star)} style={styles.starBtn}>
+                  <Icon
+                    name={star <= reviewRating ? 'star' : 'star-outline'}
+                    size={36}
+                    color="#f59e0b"
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={styles.starLabel}>
+              {['', 'Rất tệ', 'Tệ', 'Bình thường', 'Tốt', 'Rất tốt'][reviewRating]}
+            </Text>
+
+            <Text style={[styles.modalLabel, { marginTop: 16 }]}>Nhận xét (tuỳ chọn)</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Chia sẻ trải nghiệm của bạn..."
+              placeholderTextColor={colors.gray[400]}
+              multiline
+              numberOfLines={3}
+              maxLength={1000}
+              value={reviewComment}
+              onChangeText={setReviewComment}
+              textAlignVertical="top"
+            />
+
+            <TouchableOpacity
+              style={[styles.submitBtn, { backgroundColor: colors.primaryGreen }, submittingReview && styles.btnDisabled]}
+              onPress={handleSubmitReview}
+              disabled={submittingReview}
+            >
+              {submittingReview
+                ? <ActivityIndicator color={colors.white} />
+                : <Text style={styles.submitBtnText}>Gửi đánh giá</Text>
+              }
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Report Modal */}
       <Modal
@@ -929,6 +1047,14 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   evidenceAddText: { fontSize: 10, color: colors.primaryGreen, textAlign: 'center' },
+
+  reviewStarRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 8 },
+  reviewRatingText: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginLeft: 6 },
+  reviewComment: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
+
+  starRow: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 6 },
+  starBtn: { padding: 4 },
+  starLabel: { textAlign: 'center', fontSize: 14, color: colors.textSecondary, marginBottom: 4 },
 });
 
 export default OrderDetailScreen;

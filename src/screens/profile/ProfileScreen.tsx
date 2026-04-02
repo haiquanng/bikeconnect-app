@@ -96,6 +96,20 @@ const ProfileScreen = ({ navigation }: any) => {
       showChevron: true,
     },
     {
+      id: 'kyc',
+      title: 'Xác minh danh tính',
+      icon: 'shield-checkmark-outline',
+      onPress: () => navigation.navigate('KYC'),
+      showChevron: true,
+    },
+    {
+      id: 'bank-accounts',
+      title: 'Tài khoản ngân hàng',
+      icon: 'card-outline',
+      onPress: () => navigation.navigate('BankAccountList'),
+      showChevron: true,
+    },
+    {
       id: 'wallet',
       title: 'Ví của tôi',
       icon: 'wallet-outline',

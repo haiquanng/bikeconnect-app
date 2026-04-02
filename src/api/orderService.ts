@@ -61,4 +61,9 @@ export const orderService = {
     const response = await apiClient.put<OrderResponse>(`/orders/${id}/receive`);
     return response.data;
   },
+
+  async reviewOrder(id: string, params: { rating: number; comment?: string }): Promise<Order> {
+    const response = await apiClient.post<OrderResponse>(`/orders/${id}/review`, params);
+    return response.data;
+  },
 };

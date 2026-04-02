@@ -1,5 +1,7 @@
 export type UserRole = 'BUYER' | 'SELLER' | 'ADMIN' | 'INSPECTOR';
 
+export type KycStatus = 'NONE' | 'PENDING' | 'VERIFIED' | 'REJECTED';
+
 export type AuthProvider = 'google' | 'email';
 export interface Address {
   _id?: string;
@@ -32,6 +34,12 @@ export interface User {
   isVerified: boolean;
   isActive: boolean;
   authProvider: AuthProvider;
+  kycStatus?: KycStatus;
+  kycFullName?: string;
+  kycIdNumber?: string;
+  kycDob?: string;
+  kycAddress?: string;
+  kycVerifiedAt?: string;
   createdAt?: string;
   updatedAt?: string;
 }

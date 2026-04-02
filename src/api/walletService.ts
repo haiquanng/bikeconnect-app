@@ -1,4 +1,5 @@
 import { apiClient } from './apiClient';
+import type { VietQRBank } from '../types/bankAccount';
 
 export interface Wallet {
   _id: string;
@@ -83,6 +84,11 @@ export const walletService = {
       '/wallets/withdraw-requests',
     );
     return res.data?.withdrawRequests ?? [];
+  },
+
+  async getBanks(): Promise<VietQRBank[]> {
+    const res = await apiClient.get<{ success: boolean; data: VietQRBank[] }>('/wallets/banks');
+    return res.data;
   },
 
   availableBalance(wallet: Wallet): number {
