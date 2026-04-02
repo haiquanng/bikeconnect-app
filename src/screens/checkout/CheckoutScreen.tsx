@@ -166,7 +166,7 @@ const CheckoutScreen = ({ navigation, route }: any) => {
         }
       }
     } catch (e: any) {
-      Alert.alert('Lỗi', e?.response?.data?.message ?? 'Không thể tạo đơn hàng');
+      Alert.alert('Lỗi', 'Có lỗi khi đặt hàng. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }

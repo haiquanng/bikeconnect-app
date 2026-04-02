@@ -184,7 +184,7 @@ const OrderDetailScreen = ({ navigation, route }: any) => {
               const updated = await orderService.cancelOrder(orderId, 'Người mua huỷ đơn');
               setOrder(updated);
             } catch (e: any) {
-              Alert.alert('Lỗi', e?.response?.data?.message ?? 'Không thể huỷ đơn');
+              Alert.alert('Lỗi', 'Không thể huỷ đơn. Vui lòng thử lại.');
             } finally {
               setCancelling(false);
             }
@@ -233,7 +233,7 @@ const OrderDetailScreen = ({ navigation, route }: any) => {
                 setOrder(updated);
                 Alert.alert('Thành công', 'Thanh toán thành công!');
               } catch (e: any) {
-                Alert.alert('Lỗi', e?.response?.data?.message ?? 'Không thể thanh toán');
+                Alert.alert('Lỗi', 'Không thể thanh toán. Vui lòng thử lại.');
               } finally {
                 setPaying(false);
               }
@@ -261,7 +261,7 @@ const OrderDetailScreen = ({ navigation, route }: any) => {
               setOrder(updated);
               Toast.show({ type: 'success', text1: 'Xác nhận thành công!', text2: 'Đơn hàng đã hoàn thành.' });
             } catch (e: any) {
-              Alert.alert('Lỗi', e?.response?.data?.message ?? 'Không thể xác nhận');
+              Alert.alert('Lỗi', 'Không thể xác nhận nhận hàng. Vui lòng thử lại.');
             } finally {
               setReceiving(false);
             }
@@ -310,7 +310,7 @@ const OrderDetailScreen = ({ navigation, route }: any) => {
       setEvidenceImages([]);
       Toast.show({ type: 'success', text1: 'Đã gửi báo cáo', text2: 'Chúng tôi sẽ xem xét trong 24h.' });
     } catch (e: any) {
-      Alert.alert('Lỗi', e?.response?.data?.message ?? 'Không thể gửi báo cáo');
+      Alert.alert('Lỗi', 'Không thể gửi báo cáo. Vui lòng thử lại.');
     } finally {
       setSubmittingReport(false);
     }

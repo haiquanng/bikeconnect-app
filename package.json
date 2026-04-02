@@ -3,7 +3,8 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "android": "npx react-native start",
+    "android": "react-native run-android",
+    "android:start": "react-native start",
     "build-apk": "cd android && ./gradlew clean && ./gradlew assembleRelease",
     "ios": "react-native run-ios",
     "lint": "eslint .",

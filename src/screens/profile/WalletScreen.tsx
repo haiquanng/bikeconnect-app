@@ -104,7 +104,7 @@ const WalletScreen = ({ navigation }: any) => {
       setDepositAmount('');
       setPaymentUrl(url);
     } catch (e: any) {
-      Alert.alert('Lỗi', e?.response?.data?.message ?? 'Không thể tạo giao dịch');
+      Alert.alert('Lỗi', 'Không thể tạo giao dịch. Vui lòng thử lại.');
     } finally {
       setDepositing(false);
     }

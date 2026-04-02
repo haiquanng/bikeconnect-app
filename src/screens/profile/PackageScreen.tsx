@@ -115,7 +115,7 @@ const PackageScreen = ({ navigation }: any) => {
               await packageService.cancelPackage(pkg._id);
               await loadData();
             } catch (e: any) {
-              Alert.alert('Lỗi', e?.response?.data?.message ?? 'Không thể huỷ gói');
+              Alert.alert('Lỗi', 'Không thể huỷ gói. Vui lòng thử lại.');
             } finally {
               setCancelling(false);
             }

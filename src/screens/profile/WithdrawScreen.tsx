@@ -78,7 +78,7 @@ const WithdrawScreen = ({ navigation, route }: any) => {
                 [{ text: 'OK', onPress: () => navigation.goBack() }],
               );
             } catch (e: any) {
-              Alert.alert('Lỗi', e?.response?.data?.message ?? 'Không thể gửi yêu cầu rút tiền');
+              Alert.alert('Lỗi', 'Không thể gửi yêu cầu rút tiền. Vui lòng thử lại.');
             } finally {
               setLoading(false);
             }

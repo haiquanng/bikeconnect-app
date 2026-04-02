@@ -119,7 +119,7 @@ const ListingsScreen = ({ navigation }: any) => {
               showToast('Đã xóa tin đăng');
               loadListings(true);
             } catch (e: any) {
-              showToast(e?.response?.data?.message ?? 'Không thể xóa tin đăng');
+              showToast('Không thể xóa tin đăng. Vui lòng thử lại.');
             }
           },
         },
