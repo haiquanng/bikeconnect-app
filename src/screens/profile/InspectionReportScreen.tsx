@@ -65,8 +65,7 @@ const InspectionReportScreen = ({ navigation, route }: any) => {
         const data = await bicycleService.getInspectionReport(bicycleId);
         setReport(data);
       } catch (e: any) {
-        const msg = e?.response?.data?.message ?? 'Không thể tải báo cáo kiểm định';
-        setError(msg);
+        setError('Không thể tải báo cáo kiểm định. Vui lòng thử lại.');
       } finally {
         setLoading(false);
       }
@@ -90,8 +89,7 @@ const InspectionReportScreen = ({ navigation, route }: any) => {
                 Toast.show({ type: 'success', text1: 'Đã gửi lại!', text2: 'Tin đăng đang chờ kiểm định lại' });
                 navigation.navigate('Listings');
               } catch (e: any) {
-                const msg = e?.response?.data?.message ?? 'Gửi lại thất bại, vui lòng thử lại';
-                Toast.show({ type: 'error', text1: msg });
+                Toast.show({ type: 'error', text1: 'Gửi lại thất bại, vui lòng thử lại.' });
               } finally {
                 setResubmitting(false);
               }

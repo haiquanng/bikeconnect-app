@@ -127,7 +127,7 @@ const SellerOrderDetailScreen = ({ navigation, route }: any) => {
               const updated = await orderService.confirmOrder(orderId);
               setOrder(updated);
             } catch (e: any) {
-              Alert.alert('Lỗi', e?.response?.data?.message ?? 'Không thể xác nhận đơn');
+              Alert.alert('Lỗi', 'Không thể xác nhận đơn. Vui lòng thử lại.');
             } finally {
               setConfirming(false);
             }
@@ -153,7 +153,7 @@ const SellerOrderDetailScreen = ({ navigation, route }: any) => {
       const updated = await orderService.rejectOrder(orderId, rejectReason.trim());
       setOrder(updated);
     } catch (e: any) {
-      Alert.alert('Lỗi', e?.response?.data?.message ?? 'Không thể từ chối đơn');
+      Alert.alert('Lỗi', 'Không thể từ chối đơn. Vui lòng thử lại.');
     } finally {
       setRejecting(false);
     }

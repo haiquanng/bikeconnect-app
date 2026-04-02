@@ -38,6 +38,9 @@ import InspectionReportScreen from '../screens/profile/InspectionReportScreen';
 import PackageScreen from '../screens/profile/PackageScreen';
 import WishlistScreen from '../screens/profile/WishlistScreen';
 import VnpayWebViewScreen from '../screens/checkout/VnpayWebViewScreen';
+import BankAccountListScreen from '../screens/profile/BankAccountListScreen';
+import AddBankAccountScreen from '../screens/profile/AddBankAccountScreen';
+import KYCScreen from '../screens/profile/KYCScreen';
 import CreateListingScreen from '../screens/sell/CreateListingScreen';
 import EditListingScreen from '../screens/sell/EditListingScreen';
 import Toast, { BaseToast, ErrorToast, BaseToastProps } from 'react-native-toast-message';
@@ -144,6 +147,9 @@ const AppNavigator = () => {
             <Stack.Screen name="Package" component={PackageScreen} />
             <Stack.Screen name="Wishlist" component={WishlistScreen} />
             <Stack.Screen name="VnpayWebView" component={VnpayWebViewScreen} />
+            <Stack.Screen name="BankAccountList" component={BankAccountListScreen} />
+            <Stack.Screen name="AddBankAccount" component={AddBankAccountScreen} />
+            <Stack.Screen name="KYC" component={KYCScreen} />
           </Stack.Navigator>
         </NavigationContainer>
         <AppNavigatorInner />
