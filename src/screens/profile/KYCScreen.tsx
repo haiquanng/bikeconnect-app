@@ -62,7 +62,7 @@ const KYCScreen = ({ navigation }: any) => {
     setUploading(true);
     let uploadedUrl: string;
     try {
-      uploadedUrl = await uploadImageToCloudinary(imageUri);
+      uploadedUrl = (await uploadImageToCloudinary(imageUri)).url;
     } catch {
       Alert.alert('Lỗi', 'Không thể tải ảnh lên. Vui lòng thử lại.');
       setUploading(false);

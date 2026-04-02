@@ -57,8 +57,8 @@ export const orderService = {
     return response.data;
   },
 
-  async receiveOrder(id: string): Promise<Order> {
-    const response = await apiClient.put<OrderResponse>(`/orders/${id}/receive`);
+  async receiveOrder(id: string, images: string[]): Promise<Order> {
+    const response = await apiClient.put<OrderResponse>(`/orders/${id}/receive`, { images });
     return response.data;
   },
 

@@ -126,6 +126,10 @@ const OrderDetailScreen = ({ navigation, route }: any) => {
   const [reviewComment, setReviewComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
 
+  const [receiveVisible, setReceiveVisible] = useState(false);
+  const [receiveImages, setReceiveImages] = useState<string[]>([]);
+  const [uploadingReceiveImage, setUploadingReceiveImage] = useState(false);
+
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Show VNPay result toast once on mount
@@ -252,28 +256,43 @@ const OrderDetailScreen = ({ navigation, route }: any) => {
   };
 
   const handleReceive = () => {
-    Alert.alert(
-      'Xác nhận nhận hàng',
-      'Bạn đã nhận được hàng và đồng ý hoàn tất giao dịch?',
-      [
-        { text: 'Chưa', style: 'cancel' },
-        {
-          text: 'Đã nhận',
-          onPress: async () => {
-            try {
-              setReceiving(true);
-              const updated = await orderService.receiveOrder(orderId);
-              setOrder(updated);
-              Toast.show({ type: 'success', text1: 'Xác nhận thành công!', text2: 'Đơn hàng đã hoàn thành.' });
-            } catch (e: any) {
-              Alert.alert('Lỗi', 'Không thể xác nhận nhận hàng. Vui lòng thử lại.');
-            } finally {
-              setReceiving(false);
-            }
-          },
-        },
-      ],
-    );
+    setReceiveImages([]);
+    setReceiveVisible(true);
+  };
+
+  const handlePickReceiveImage = async () => {
+    if (receiveImages.length >= 10) { return; }
+    launchImageLibrary({ mediaType: 'photo', quality: 0.8 }, async response => {
+      if (response.didCancel || !response.assets?.[0]?.uri) { return; }
+      setUploadingReceiveImage(true);
+      try {
+        const { url } = await uploadImageToCloudinary(response.assets[0].uri!);
+        setReceiveImages(prev => [...prev, url]);
+      } catch {
+        Alert.alert('Lỗi', 'Không thể tải ảnh lên. Vui lòng thử lại.');
+      } finally {
+        setUploadingReceiveImage(false);
+      }
+    });
+  };
+
+  const handleSubmitReceive = async () => {
+    if (receiveImages.length === 0) {
+      Alert.alert('Thiếu ảnh', 'Vui lòng chụp ít nhất 1 ảnh bằng chứng nhận hàng.');
+      return;
+    }
+    try {
+      setReceiving(true);
+      setReceiveVisible(false);
+      const updated = await orderService.receiveOrder(orderId, receiveImages);
+      setOrder(updated);
+      setReceiveImages([]);
+      Toast.show({ type: 'success', text1: 'Xác nhận thành công!', text2: 'Đơn hàng đã hoàn thành.' });
+    } catch {
+      Alert.alert('Lỗi', 'Không thể xác nhận nhận hàng. Vui lòng thử lại.');
+    } finally {
+      setReceiving(false);
+    }
   };
 
   const handleSubmitReview = async () => {
@@ -590,6 +609,77 @@ const OrderDetailScreen = ({ navigation, route }: any) => {
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Receive Proof Modal */}
+      <Modal
+        visible={receiveVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setReceiveVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Xác nhận nhận hàng</Text>
+              <TouchableOpacity onPress={() => setReceiveVisible(false)}>
+                <Icon name="close" size={22} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalLabel}>Ảnh bằng chứng nhận hàng <Text style={{ color: colors.error }}>*</Text></Text>
+            <Text style={[styles.modalLabel, { fontSize: 12, fontWeight: '400', color: colors.textSecondary, marginTop: -8, marginBottom: 12 }]}>
+              Chụp ảnh kiện hàng, sản phẩm thực tế khi nhận (tối thiểu 1, tối đa 10 ảnh)
+            </Text>
+
+            <View style={styles.evidenceRow}>
+              {receiveImages.map((uri, idx) => (
+                <View key={idx} style={styles.evidenceThumb}>
+                  <Image source={{ uri }} style={styles.evidenceImg} />
+                  <TouchableOpacity
+                    style={styles.evidenceRemove}
+                    onPress={() => setReceiveImages(prev => prev.filter((_, i) => i !== idx))}
+                  >
+                    <Icon name="close-circle" size={18} color={colors.error} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+              {receiveImages.length < 10 && (
+                <TouchableOpacity
+                  style={[styles.evidenceAdd, uploadingReceiveImage && styles.btnDisabled]}
+                  onPress={handlePickReceiveImage}
+                  disabled={uploadingReceiveImage || receiving}
+                >
+                  {uploadingReceiveImage
+                    ? <ActivityIndicator size="small" color={colors.primaryGreen} />
+                    : <Icon name="camera-outline" size={22} color={colors.primaryGreen} />
+                  }
+                  <Text style={styles.evidenceAddText}>
+                    {receiveImages.length === 0 ? 'Thêm ảnh' : 'Thêm'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <View style={[styles.noteBox, { marginBottom: 16 }]}>
+              <Icon name="information-circle-outline" size={15} color={colors.primaryGreen} />
+              <Text style={styles.noteText}>
+                Tiền sẽ được giải phóng cho người bán sau <Text style={{ fontWeight: '700', color: colors.textPrimary }}>48 giờ</Text>.
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.submitBtn, { backgroundColor: colors.primaryGreen }, (receiving || uploadingReceiveImage) && styles.btnDisabled]}
+              onPress={handleSubmitReceive}
+              disabled={receiving || uploadingReceiveImage}
+            >
+              {receiving
+                ? <ActivityIndicator color={colors.white} />
+                : <Text style={styles.submitBtnText}>Xác nhận đã nhận hàng</Text>
+              }
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Review bottom bar */}
       {canReview && (
@@ -1047,6 +1137,13 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   evidenceAddText: { fontSize: 10, color: colors.primaryGreen, textAlign: 'center' },
+
+  noteBox: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 8,
+    backgroundColor: '#ECFDF5', borderRadius: 10, padding: 12,
+    borderWidth: 1, borderColor: colors.primaryGreen + '40',
+  },
+  noteText: { flex: 1, fontSize: 13, color: colors.textSecondary, lineHeight: 18 },
 
   reviewStarRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 8 },
   reviewRatingText: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginLeft: 6 },
